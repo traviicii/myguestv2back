@@ -137,3 +137,58 @@ def test_formula_crud_flow_scoped_to_owner(client):
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
     assert listed.json()["items"][0]["images"] == []
+
+
+def test_list_formulas_returns_only_owner_rows(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-2"))
+
+    owner_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={"first_name": "Owner", "last_name": "Client"},
+    )
+    owner_client_id = owner_client.json()["id"]
+
+    other_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-2"),
+        json={"first_name": "Other", "last_name": "Client"},
+    )
+    other_client_id = other_client.json()["id"]
+
+    owner_formula = client.post(
+        f"/api/v1/clients/{owner_client_id}/formulas",
+        headers=_auth("token-user-1"),
+        json={
+            "service_type": "cut",
+            "notes": "owner formula",
+            "price_cents": 9000,
+            "service_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    assert owner_formula.status_code == 201
+
+    other_formula = client.post(
+        f"/api/v1/clients/{other_client_id}/formulas",
+        headers=_auth("token-user-2"),
+        json={
+            "service_type": "color",
+            "notes": "other formula",
+            "price_cents": 15000,
+            "service_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    assert other_formula.status_code == 201
+
+    listed = client.get(
+        "/api/v1/formulas",
+        headers=_auth("token-user-1"),
+        params={"limit": 100, "offset": 0},
+    )
+    assert listed.status_code == 200
+    body = listed.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["client_id"] == owner_client_id
+    assert body["items"][0]["notes"] == "owner formula"

@@ -57,6 +57,40 @@ def list_client_formulas(
     )
 
 
+@router.get("/formulas", response_model=FormulaListResponse)
+def list_formulas(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session),
+) -> FormulaListResponse:
+    filters = Client.owner_user_id == current_user.id
+    total = (
+        db.scalar(
+            select(func.count(Formula.id))
+            .join(Client, Client.id == Formula.client_id)
+            .where(filters)
+        )
+        or 0
+    )
+    stmt = (
+        select(Formula)
+        .options(selectinload(Formula.images))
+        .join(Client, Client.id == Formula.client_id)
+        .where(filters)
+        .order_by(desc(Formula.service_at))
+        .offset(offset)
+        .limit(limit)
+    )
+    formulas = list(db.scalars(stmt).all())
+    return FormulaListResponse(
+        total=total,
+        limit=limit,
+        offset=offset,
+        items=[FormulaRead.model_validate(formula) for formula in formulas],
+    )
+
+
 @router.post("/clients/{client_id}/formulas", response_model=FormulaRead, status_code=201)
 def create_formula(
     client_id: int,
