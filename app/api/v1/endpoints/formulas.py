@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import desc, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_session
 from app.core.errors import AppError
@@ -20,6 +20,7 @@ def _get_owned_client(db: Session, user_id: int, client_id: int) -> Client:
 def _get_owned_formula(db: Session, user_id: int, formula_id: int) -> Formula:
     stmt = (
         select(Formula)
+        .options(selectinload(Formula.images))
         .join(Client, Client.id == Formula.client_id)
         .where(Formula.id == formula_id, Client.owner_user_id == user_id)
     )
@@ -41,6 +42,7 @@ def list_client_formulas(
     total = db.scalar(select(func.count(Formula.id)).where(Formula.client_id == client_id)) or 0
     stmt = (
         select(Formula)
+        .options(selectinload(Formula.images))
         .where(Formula.client_id == client_id)
         .order_by(desc(Formula.service_at))
         .offset(offset)

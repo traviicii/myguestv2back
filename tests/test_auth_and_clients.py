@@ -124,6 +124,7 @@ def test_formula_crud_flow_scoped_to_owner(client):
     )
     assert created_formula.status_code == 201
     formula_id = created_formula.json()["id"]
+    assert created_formula.json()["images"] == []
 
     blocked = client.get(f"/api/v1/formulas/{formula_id}", headers=_auth("token-user-2"))
     assert blocked.status_code == 404
@@ -135,3 +136,4 @@ def test_formula_crud_flow_scoped_to_owner(client):
     )
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["images"] == []

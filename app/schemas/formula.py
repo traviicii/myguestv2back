@@ -19,6 +19,15 @@ class FormulaUpdate(BaseModel):
     service_at: datetime | None = None
 
 
+class FormulaImageRead(ORMModel):
+    id: int
+    formula_id: int
+    storage_provider: str
+    public_url: str | None = None
+    object_key: str | None = None
+    file_name: str
+
+
 class FormulaRead(ORMModel):
     id: int
     client_id: int
@@ -26,6 +35,7 @@ class FormulaRead(ORMModel):
     notes: str | None = None
     price_cents: int | None = None
     service_at: datetime
+    images: list[FormulaImageRead] = []
 
 
 class FormulaListResponse(BaseModel):
