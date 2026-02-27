@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +30,8 @@ class ClientRead(ORMModel):
     owner_user_id: int
     first_name: str
     last_name: str
+    created_at: datetime
+    updated_at: datetime
     email: str | None = None
     phone: str | None = None
     birthday: date | None = None
