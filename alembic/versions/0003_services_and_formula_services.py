@@ -1,6 +1,6 @@
 """add services catalog and formula service links
 
-Revision ID: 0003_services_and_formula_services
+Revision ID: 0003_services_formula_links
 Revises: 0002_backfill_v2_from_legacy
 Create Date: 2026-02-27
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "0003_services_and_formula_services"
+revision = "0003_services_formula_links"
 down_revision = "0002_backfill_v2_from_legacy"
 branch_labels = None
 depends_on = None
@@ -67,7 +67,7 @@ def upgrade() -> None:
         WITH distinct_services AS (
             SELECT DISTINCT
                 c.owner_user_id,
-                trim(regexp_replace(f.service_type, '\s+', ' ', 'g')) AS raw_name
+                trim(regexp_replace(f.service_type, '\\s+', ' ', 'g')) AS raw_name
             FROM formulas f
             JOIN clients c ON c.id = f.client_id
             WHERE f.service_type IS NOT NULL
@@ -124,7 +124,7 @@ def upgrade() -> None:
         SELECT
             f.id,
             s.id,
-            trim(regexp_replace(f.service_type, '\s+', ' ', 'g')),
+            trim(regexp_replace(f.service_type, '\\s+', ' ', 'g')),
             0,
             now(),
             now()
@@ -132,7 +132,7 @@ def upgrade() -> None:
         JOIN clients c ON c.id = f.client_id
         JOIN services s
           ON s.owner_user_id = c.owner_user_id
-         AND s.normalized_name = lower(trim(regexp_replace(f.service_type, '\s+', ' ', 'g')))
+         AND s.normalized_name = lower(trim(regexp_replace(f.service_type, '\\s+', ' ', 'g')))
         WHERE f.service_type IS NOT NULL
           AND trim(f.service_type) <> ''
         ON CONFLICT (formula_id, service_id) DO NOTHING;
