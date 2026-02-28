@@ -54,3 +54,13 @@ alembic upgrade head
 ```bash
 pytest
 ```
+
+## Render start command
+
+Use:
+
+```bash
+bash scripts/start_render.sh
+```
+
+This runs `alembic upgrade head` before starting Uvicorn so schema stays aligned with deployed API code.

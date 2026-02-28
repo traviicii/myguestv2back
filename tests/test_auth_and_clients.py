@@ -215,3 +215,86 @@ def test_create_client_does_not_prepopulate_color_chart(client):
         assert color_chart is None
     finally:
         db.close()
+
+
+def test_color_chart_upsert_and_get_for_owner(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    created_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={"first_name": "Color", "last_name": "Chart"},
+    )
+    assert created_client.status_code == 201
+    client_id = created_client.json()["id"]
+
+    missing = client.get(
+        f"/api/v1/clients/{client_id}/color-chart",
+        headers=_auth("token-user-1"),
+    )
+    assert missing.status_code == 404
+    assert missing.json()["error"]["code"] == "color_chart_not_found"
+
+    upsert = client.patch(
+        f"/api/v1/clients/{client_id}/color-chart",
+        headers=_auth("token-user-1"),
+        json={
+            "porosity": "Low",
+            "hair_texture": "Straight",
+            "elasticity": "Medium",
+            "natural_level": "4",
+            "desired_level": "8",
+            "gray_front": "25%",
+        },
+    )
+    assert upsert.status_code == 200
+    upsert_body = upsert.json()
+    assert upsert_body["client_id"] == client_id
+    assert upsert_body["porosity"] == "Low"
+    assert upsert_body["hair_texture"] == "Straight"
+    assert upsert_body["desired_level"] == "8"
+
+    fetched = client.get(
+        f"/api/v1/clients/{client_id}/color-chart",
+        headers=_auth("token-user-1"),
+    )
+    assert fetched.status_code == 200
+    fetched_body = fetched.json()
+    assert fetched_body["client_id"] == client_id
+    assert fetched_body["gray_front"] == "25%"
+
+    listed = client.get(
+        "/api/v1/color-charts",
+        headers=_auth("token-user-1"),
+        params={"limit": 20, "offset": 0},
+    )
+    assert listed.status_code == 200
+    assert any(item["client_id"] == client_id for item in listed.json()["items"])
+
+
+def test_color_chart_ownership_enforced(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-2"))
+
+    created_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={"first_name": "Owned", "last_name": "Client"},
+    )
+    assert created_client.status_code == 201
+    client_id = created_client.json()["id"]
+
+    forbidden_patch = client.patch(
+        f"/api/v1/clients/{client_id}/color-chart",
+        headers=_auth("token-user-2"),
+        json={"porosity": "High"},
+    )
+    assert forbidden_patch.status_code == 404
+    assert forbidden_patch.json()["error"]["code"] == "client_not_found"
+
+    forbidden_get = client.get(
+        f"/api/v1/clients/{client_id}/color-chart",
+        headers=_auth("token-user-2"),
+    )
+    assert forbidden_get.status_code == 404
+    assert forbidden_get.json()["error"]["code"] == "client_not_found"
