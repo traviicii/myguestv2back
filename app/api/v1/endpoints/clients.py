@@ -63,6 +63,7 @@ def create_client(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> ClientRead:
+    # Keep client creation lean: only create a color chart if/when the user explicitly adds one.
     client = Client(owner_user_id=current_user.id, **payload.model_dump())
     db.add(client)
     db.commit()

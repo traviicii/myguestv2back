@@ -16,3 +16,4 @@ class User(Base, TimestampMixin):
     photo_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
 
     clients = relationship("Client", back_populates="owner", cascade="all, delete-orphan")
+    services = relationship("Service", back_populates="owner", cascade="all, delete-orphan")

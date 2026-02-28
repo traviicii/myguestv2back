@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.deps import get_token_verifier
 from app.core.config import Settings
 from app.db.base import Base
-from app.db.import_models import Client, ColorChart, Formula, FormulaImage, User  # noqa: F401
+from app.db.import_models import Client, ColorChart, Formula, FormulaImage, FormulaService, Service, User  # noqa: F401
 from app.main import create_app
 
 

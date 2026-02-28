@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.models import User
+from app.models import ColorChart, User
 
 
 def _auth(token: str) -> dict[str, str]:
@@ -192,3 +192,26 @@ def test_list_formulas_returns_only_owner_rows(client):
     assert len(body["items"]) == 1
     assert body["items"][0]["client_id"] == owner_client_id
     assert body["items"][0]["notes"] == "owner formula"
+
+
+def test_create_client_does_not_prepopulate_color_chart(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    created = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={"first_name": "No", "last_name": "Chart"},
+    )
+    assert created.status_code == 201
+    created_client_id = created.json()["id"]
+
+    db = client.app.state.session_factory()
+    try:
+        color_chart = (
+            db.query(ColorChart)
+            .filter(ColorChart.client_id == created_client_id)
+            .one_or_none()
+        )
+        assert color_chart is None
+    finally:
+        db.close()
