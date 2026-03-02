@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/myguestv2"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:8081"])
     firebase_credentials_path: str | None = None
+    firebase_storage_bucket: str | None = None
 
     @field_validator("database_url", mode="before")
     @classmethod

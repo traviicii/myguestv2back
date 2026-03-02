@@ -16,11 +16,14 @@ class FirebaseTokenVerifier:
         if self._initialized:
             return
         if not firebase_admin._apps:
+            options: dict[str, str] | None = None
+            if self.settings.firebase_storage_bucket:
+                options = {"storageBucket": self.settings.firebase_storage_bucket}
             if self.settings.firebase_credentials_path:
                 cred = credentials.Certificate(self.settings.firebase_credentials_path)
-                firebase_admin.initialize_app(cred)
+                firebase_admin.initialize_app(cred, options)
             else:
-                firebase_admin.initialize_app()
+                firebase_admin.initialize_app(options=options)
         self._initialized = True
 
     def verify(self, token: str) -> dict[str, Any]:
