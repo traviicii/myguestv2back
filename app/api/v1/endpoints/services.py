@@ -1,5 +1,8 @@
 from typing import Literal
 
+# Service catalog endpoints.
+# These enforce normalized names so duplicates cannot be created with different casing.
+
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -14,6 +17,7 @@ router = APIRouter(prefix="/services", tags=["services"])
 
 
 def _get_owned_service(db: Session, user_id: int, service_id: int) -> Service:
+    # Always enforce ownership so one user cannot access another's services.
     service = db.scalar(
         select(Service).where(Service.id == service_id, Service.owner_user_id == user_id)
     )
@@ -44,6 +48,7 @@ def list_services(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> ServiceListResponse:
+    # Include usage_count so the UI can prevent deleting services used in logs.
     stmt = (
         select(Service, func.count(FormulaService.id).label("usage_count"))
         .outerjoin(FormulaService, FormulaService.service_id == Service.id)

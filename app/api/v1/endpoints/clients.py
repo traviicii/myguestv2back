@@ -1,3 +1,5 @@
+# Client CRUD endpoints with pagination and sorting.
+# We validate sort/order inputs so the API fails loudly on invalid values.
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import asc, desc, func, select
 from sqlalchemy.orm import Session
@@ -17,6 +19,7 @@ CLIENT_SORT_MAP = {
 
 
 def _get_owned_client(db: Session, user_id: int, client_id: int) -> Client:
+    # Shared guard: every client access must be scoped to the authenticated user.
     stmt = select(Client).where(Client.id == client_id, Client.owner_user_id == user_id)
     client = db.scalar(stmt)
     if not client:
@@ -33,12 +36,18 @@ def list_clients(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> ClientListResponse:
+    # Reject unknown sort fields and order directions so callers get a clear error
+    # instead of silently falling back to an unintended default.
     if sort not in CLIENT_SORT_MAP:
         raise AppError(400, "invalid_sort", f"Unsupported sort field: {sort}")
+    if order not in {"asc", "desc"}:
+        raise AppError(400, "invalid_order", f"Unsupported order direction: {order}")
 
     sort_column = CLIENT_SORT_MAP[sort]
     ordering = asc(sort_column) if order == "asc" else desc(sort_column)
 
+    # Compute total separately so clients can render pagination UI without
+    # a second round-trip.
     total = db.scalar(select(func.count(Client.id)).where(Client.owner_user_id == current_user.id)) or 0
     stmt = (
         select(Client)

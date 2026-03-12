@@ -1,9 +1,10 @@
 from collections.abc import Sequence
+from typing import Literal
 from urllib.parse import unquote, urlparse
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import desc, func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, load_only, selectinload
 
 from app.api.deps import get_current_user, get_session
 from app.core.errors import AppError
@@ -25,6 +26,68 @@ def _formula_load_options():
         selectinload(Formula.images),
         selectinload(Formula.formula_services).selectinload(FormulaService.service),
     )
+
+
+def _parse_include(value: str | None) -> set[str]:
+    if value is None:
+        return {"images", "services"}
+    parts = [part.strip().lower() for part in value.split(",")]
+    return {part for part in parts if part in {"images", "services"}}
+
+
+def _resolve_fields(value: str | None) -> Literal["full", "lite"]:
+    return "lite" if value == "lite" else "full"
+
+
+def _serialize_formula(
+    formula: Formula,
+    include_images: bool,
+    include_services: bool,
+    include_notes: bool,
+    image_limit: int | None,
+) -> dict:
+    images: list[dict] = []
+    if include_images:
+        image_rows = list(formula.images or [])
+        image_rows.sort(key=lambda image: image.id)
+        if image_limit is not None:
+            image_rows = image_rows[:image_limit]
+        images = [
+            {
+                "id": image.id,
+                "formula_id": image.formula_id,
+                "storage_provider": image.storage_provider,
+                "public_url": image.public_url,
+                "object_key": image.object_key,
+                "file_name": image.file_name,
+            }
+            for image in image_rows
+        ]
+
+    services: list[dict] = []
+    if include_services:
+        service_rows = list(formula.formula_services or [])
+        service_rows.sort(key=lambda service: service.position)
+        services = [
+            {
+                "service_id": service.service_id,
+                "name": service.name,
+                "position": service.position,
+                "label_snapshot": service.label_snapshot,
+            }
+            for service in service_rows
+        ]
+
+    return {
+        "id": formula.id,
+        "client_id": formula.client_id,
+        "service_type": formula.service_type,
+        "notes": formula.notes if include_notes else None,
+        "price_cents": formula.price_cents,
+        "service_at": formula.service_at,
+        "images": images,
+        "services": services,
+    }
 
 
 def _get_owned_client(db: Session, user_id: int, client_id: int) -> Client:
@@ -211,14 +274,36 @@ def list_client_formulas(
     client_id: int,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    include: str | None = Query(default=None),
+    fields: Literal["full", "lite"] = Query(default="full"),
+    image_limit: int | None = Query(default=None, ge=0, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> FormulaListResponse:
     _get_owned_client(db, current_user.id, client_id)
+    include_set = _parse_include(include)
+    include_images = "images" in include_set
+    include_services = "services" in include_set
+    include_notes = _resolve_fields(fields) == "full"
+    options = []
+    if include_images:
+        options.append(selectinload(Formula.images))
+    if include_services:
+        options.append(selectinload(Formula.formula_services).selectinload(FormulaService.service))
+    if not include_notes:
+        options.append(
+            load_only(
+                Formula.id,
+                Formula.client_id,
+                Formula.service_type,
+                Formula.price_cents,
+                Formula.service_at,
+            )
+        )
     total = db.scalar(select(func.count(Formula.id)).where(Formula.client_id == client_id)) or 0
     stmt = (
         select(Formula)
-        .options(*_formula_load_options())
+        .options(*options)
         .where(Formula.client_id == client_id)
         .order_by(desc(Formula.service_at))
         .offset(offset)
@@ -229,7 +314,18 @@ def list_client_formulas(
         total=total,
         limit=limit,
         offset=offset,
-        items=[FormulaRead.model_validate(formula) for formula in formulas],
+        items=[
+            FormulaRead.model_validate(
+                _serialize_formula(
+                    formula,
+                    include_images=include_images,
+                    include_services=include_services,
+                    include_notes=include_notes,
+                    image_limit=image_limit,
+                )
+            )
+            for formula in formulas
+        ],
     )
 
 
@@ -237,9 +333,31 @@ def list_client_formulas(
 def list_formulas(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    include: str | None = Query(default=None),
+    fields: Literal["full", "lite"] = Query(default="full"),
+    image_limit: int | None = Query(default=None, ge=0, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> FormulaListResponse:
+    include_set = _parse_include(include)
+    include_images = "images" in include_set
+    include_services = "services" in include_set
+    include_notes = _resolve_fields(fields) == "full"
+    options = []
+    if include_images:
+        options.append(selectinload(Formula.images))
+    if include_services:
+        options.append(selectinload(Formula.formula_services).selectinload(FormulaService.service))
+    if not include_notes:
+        options.append(
+            load_only(
+                Formula.id,
+                Formula.client_id,
+                Formula.service_type,
+                Formula.price_cents,
+                Formula.service_at,
+            )
+        )
     filters = Client.owner_user_id == current_user.id
     total = (
         db.scalar(
@@ -251,7 +369,7 @@ def list_formulas(
     )
     stmt = (
         select(Formula)
-        .options(*_formula_load_options())
+        .options(*options)
         .join(Client, Client.id == Formula.client_id)
         .where(filters)
         .order_by(desc(Formula.service_at))
@@ -263,7 +381,18 @@ def list_formulas(
         total=total,
         limit=limit,
         offset=offset,
-        items=[FormulaRead.model_validate(formula) for formula in formulas],
+        items=[
+            FormulaRead.model_validate(
+                _serialize_formula(
+                    formula,
+                    include_images=include_images,
+                    include_services=include_services,
+                    include_notes=include_notes,
+                    image_limit=image_limit,
+                )
+            )
+            for formula in formulas
+        ],
     )
 
 

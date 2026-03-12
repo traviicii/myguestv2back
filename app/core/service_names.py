@@ -1,5 +1,8 @@
 import re
 
+# Shared service-name normalization for the backend.
+# We format labels for display and also derive a lowercase key for uniqueness.
+
 CONNECTOR_WORDS = {"and", "or", "of", "the", "a", "an", "for", "to"}
 
 
