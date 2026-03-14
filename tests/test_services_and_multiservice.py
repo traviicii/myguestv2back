@@ -1,4 +1,12 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from app.models import Formula, FormulaImage, FormulaService, Service
+from app.schemas.formula import FormulaImageWrite
+from app.services.formulas import (
+    build_formula_list_shape,
+    replace_formula_images,
+    serialize_formula,
+)
 
 
 def _auth(token: str) -> dict[str, str]:
@@ -106,7 +114,7 @@ def test_formula_multi_service_create_and_update(client):
             "service_ids": [second_service["id"], first_service["id"]],
             "notes": "multi service",
             "price_cents": 25000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert created_formula.status_code == 201
@@ -158,7 +166,7 @@ def test_legacy_service_type_backfills_links_without_duplicates(client):
             "service_type": " single process ",
             "notes": "legacy 1",
             "price_cents": 10000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert first_formula.status_code == 201
@@ -173,7 +181,7 @@ def test_legacy_service_type_backfills_links_without_duplicates(client):
             "service_type": "single PROCESS",
             "notes": "legacy 2",
             "price_cents": 9000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert second_formula.status_code == 201
@@ -207,7 +215,7 @@ def test_formula_image_write_and_replace_flow(client):
         headers=_auth("token-user-1"),
         json={
             "service_ids": [service["id"]],
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
             "images": [
                 {
                     "storage_provider": "firebase",
@@ -253,3 +261,125 @@ def test_formula_image_write_and_replace_flow(client):
     )
     assert cleared.status_code == 200
     assert cleared.json()["images"] == []
+
+
+def test_formula_serialization_respects_fields_and_image_limits():
+    service = Service(
+        id=7,
+        owner_user_id=1,
+        name="Gloss",
+        normalized_name="gloss",
+        sort_order=0,
+        is_active=True,
+    )
+    secondary_service = Service(
+        id=8,
+        owner_user_id=1,
+        name="Cut",
+        normalized_name="cut",
+        sort_order=1,
+        is_active=True,
+    )
+    formula = Formula(
+        id=99,
+        client_id=12,
+        service_type="Gloss",
+        notes="Keep this private in lite mode",
+        price_cents=18500,
+        service_at=datetime.now(UTC),
+    )
+    formula.images = [
+        FormulaImage(
+            id=11,
+            formula_id=99,
+            storage_provider="firebase",
+            public_url="https://cdn.example.com/final-look.jpg",
+            object_key=None,
+            file_name="final-look.jpg",
+        ),
+        FormulaImage(
+            id=10,
+            formula_id=99,
+            storage_provider="r2",
+            public_url=None,
+            object_key="formula-images/process-shot.png",
+            file_name="process-shot.png",
+        ),
+    ]
+    formula.formula_services = [
+        FormulaService(
+            formula_id=99,
+            service_id=secondary_service.id,
+            service=secondary_service,
+            service_label_snapshot=secondary_service.name,
+            position=1,
+        ),
+        FormulaService(
+            formula_id=99,
+            service_id=service.id,
+            service=service,
+            service_label_snapshot=service.name,
+            position=0,
+        ),
+    ]
+
+    shape = build_formula_list_shape(include="services", fields="lite")
+    assert shape.include_images is False
+    assert shape.include_services is True
+    assert shape.include_notes is False
+
+    serialized = serialize_formula(
+        formula,
+        include_images=True,
+        include_services=True,
+        include_notes=shape.include_notes,
+        image_limit=1,
+    )
+
+    assert serialized["notes"] is None
+    assert serialized["images"] == [
+        {
+            "id": 10,
+            "formula_id": 99,
+            "storage_provider": "r2",
+            "public_url": None,
+            "object_key": "formula-images/process-shot.png",
+            "file_name": "process-shot.png",
+        }
+    ]
+    assert [item["name"] for item in serialized["services"]] == ["Gloss", "Cut"]
+    assert [item["position"] for item in serialized["services"]] == [0, 1]
+
+
+def test_replace_formula_images_dedupes_and_normalizes_storage_provider():
+    formula = Formula(
+        id=101,
+        client_id=14,
+        service_type="Color",
+        notes=None,
+        price_cents=None,
+        service_at=datetime.now(UTC),
+    )
+
+    replace_formula_images(
+        formula,
+        [
+            FormulaImageWrite(
+                storage_provider="firebase",
+                public_url="https://cdn.example.com/gallery/look-1.jpg",
+            ),
+            FormulaImageWrite(
+                storage_provider="firebase",
+                public_url="https://cdn.example.com/gallery/look-1.jpg",
+            ),
+            FormulaImageWrite(
+                storage_provider="device local",
+                object_key="local-cache/session-1/process.png",
+            ),
+        ],
+    )
+
+    assert len(formula.images) == 2
+    assert formula.images[0].file_name == "look-1.jpg"
+    assert formula.images[1].storage_provider == "device_local"
+    assert formula.images[1].file_name == "process.png"

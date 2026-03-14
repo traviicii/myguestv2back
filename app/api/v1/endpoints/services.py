@@ -1,8 +1,5 @@
 from typing import Literal
 
-# Service catalog endpoints.
-# These enforce normalized names so duplicates cannot be created with different casing.
-
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -12,6 +9,9 @@ from app.core.errors import AppError
 from app.core.service_names import format_service_name, normalize_service_key
 from app.models import FormulaService, Service, User
 from app.schemas.service import ServiceCreate, ServiceListResponse, ServiceRead, ServiceUpdate
+
+# Service catalog endpoints.
+# These enforce normalized names so duplicates cannot be created with different casing.
 
 router = APIRouter(prefix="/services", tags=["services"])
 
