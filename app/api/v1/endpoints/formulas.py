@@ -14,7 +14,6 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.service_names import format_service_name, normalize_service_key
 from app.models import Client, Formula, FormulaImage, FormulaService, Service, User
-from app.services.storage_cleanup import extract_storage_target
 from app.schemas.formula import (
     FormulaCreate,
     FormulaImageWrite,
@@ -42,6 +41,33 @@ def _parse_include(value: str | None) -> set[str]:
 
 def _resolve_fields(value: str | None) -> Literal["full", "lite"]:
     return "lite" if value == "lite" else "full"
+
+
+def _extract_storage_target(
+    public_url: str | None, object_key: str | None
+) -> tuple[str | None, str | None]:
+    if object_key:
+        return None, object_key.lstrip("/")
+    if not public_url:
+        return None, None
+
+    trimmed = public_url.strip()
+    if trimmed.startswith("gs://"):
+        path = trimmed[len("gs://") :]
+        bucket, _, object_path = path.partition("/")
+        return bucket or None, object_path or None
+
+    parsed = urlparse(trimmed)
+    if (
+        "firebasestorage.googleapis.com" in parsed.netloc
+        and "/b/" in parsed.path
+        and "/o/" in parsed.path
+    ):
+        segment = parsed.path.split("/b/", 1)[1]
+        bucket = segment.split("/", 1)[0]
+        encoded = segment.split("/o/", 1)[1].split("/", 1)[0]
+        return bucket or None, unquote(encoded)
+    return None, None
 
 
 def _serialize_formula(
@@ -214,7 +240,7 @@ def _resolve_image_public_url(image: FormulaImage) -> str | None:
 
     settings = get_settings()
     default_bucket_name = (settings.firebase_storage_bucket or "").strip() or None
-    bucket_name, object_path = extract_storage_target(trimmed_public_url, image.object_key)
+    bucket_name, object_path = _extract_storage_target(trimmed_public_url, image.object_key)
 
     if not object_path:
         return trimmed_public_url or None
