@@ -346,3 +346,43 @@ def test_resolve_image_public_url_refreshes_legacy_firebase_download_urls(monkey
     assert _resolve_image_public_url(image) == "https://signed.example.com/after.jpg"
     assert seen["bucket_name"] == "custom-bucket"
     assert seen["object_path"] == "formula-images/client-1/after.jpg"
+
+
+def test_resolve_image_public_url_preserves_legacy_download_url_when_signing_fails(monkeypatch):
+    legacy_url = (
+        "https://firebasestorage.googleapis.com/v0/b/custom-bucket/o/"
+        "formula-images%2Fclient-1%2Fafter.jpg?alt=media&token=legacy-token"
+    )
+    image = FormulaImage(
+        id=12,
+        formula_id=99,
+        storage_provider="firebase",
+        public_url=legacy_url,
+        object_key=None,
+        file_name="after.jpg",
+    )
+
+    class FakeSettings:
+        firebase_storage_bucket = "default-bucket"
+
+    class FakeBucket:
+        def __init__(self, bucket_name: str):
+            self.bucket_name = bucket_name
+
+        def blob(self, object_path: str):
+            class FakeBlob:
+                def generate_signed_url(self, *, version: str, expiration, method: str) -> str:
+                    raise RuntimeError("signing unavailable")
+
+            return FakeBlob()
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.formulas.get_settings", lambda: FakeSettings()
+    )
+    monkeypatch.setattr("app.api.v1.endpoints.formulas.firebase_admin._apps", [object()])
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.formulas.firebase_storage.bucket",
+        lambda bucket_name: FakeBucket(bucket_name),
+    )
+
+    assert _resolve_image_public_url(image) == legacy_url

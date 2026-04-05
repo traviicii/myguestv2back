@@ -259,6 +259,8 @@ def _resolve_image_public_url(image: FormulaImage) -> str | None:
             method="GET",
         )
     except Exception:
+        if trimmed_public_url:
+            return trimmed_public_url
         encoded_key = quote(object_path, safe="")
         return f"https://firebasestorage.googleapis.com/v0/b/{resolved_bucket}/o/{encoded_key}?alt=media"
 
