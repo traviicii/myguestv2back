@@ -237,6 +237,8 @@ def _resolve_image_public_url(image: FormulaImage) -> str | None:
     trimmed_public_url = image.public_url.strip() if image.public_url else None
     if provider != "firebase":
         return trimmed_public_url or None
+    if trimmed_public_url:
+        return trimmed_public_url
 
     settings = get_settings()
     default_bucket_name = (settings.firebase_storage_bucket or "").strip() or None
@@ -259,8 +261,6 @@ def _resolve_image_public_url(image: FormulaImage) -> str | None:
             method="GET",
         )
     except Exception:
-        if trimmed_public_url:
-            return trimmed_public_url
         encoded_key = quote(object_path, safe="")
         return f"https://firebasestorage.googleapis.com/v0/b/{resolved_bucket}/o/{encoded_key}?alt=media"
 
