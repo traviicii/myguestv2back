@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.service_names import format_service_name, normalize_service_key
 from app.models import Client, Formula, FormulaImage, FormulaService, Service, User
+from app.services.storage_cleanup import extract_storage_target
 from app.schemas.formula import (
     FormulaCreate,
     FormulaImageWrite,
@@ -206,33 +207,34 @@ def _normalize_storage_provider(value: str | None) -> str:
 
 
 def _resolve_image_public_url(image: FormulaImage) -> str | None:
-    if image.public_url:
-        trimmed = image.public_url.strip()
-        if trimmed:
-            return trimmed
-
     provider = (image.storage_provider or "").strip().lower()
-    object_key = (image.object_key or "").strip().lstrip("/")
-    if provider != "firebase" or not object_key:
-        return None
+    trimmed_public_url = image.public_url.strip() if image.public_url else None
+    if provider != "firebase":
+        return trimmed_public_url or None
 
     settings = get_settings()
-    bucket_name = (settings.firebase_storage_bucket or "").strip()
-    if not bucket_name:
-        return None
+    default_bucket_name = (settings.firebase_storage_bucket or "").strip() or None
+    bucket_name, object_path = extract_storage_target(trimmed_public_url, image.object_key)
+
+    if not object_path:
+        return trimmed_public_url or None
+
+    resolved_bucket = bucket_name or default_bucket_name
+    if not resolved_bucket:
+        return trimmed_public_url or None
 
     try:
         if not firebase_admin._apps:
-            firebase_admin.initialize_app(options={"storageBucket": bucket_name})
-        blob = firebase_storage.bucket(bucket_name).blob(object_key)
+            firebase_admin.initialize_app(options={"storageBucket": resolved_bucket})
+        blob = firebase_storage.bucket(resolved_bucket).blob(object_path)
         return blob.generate_signed_url(
             version="v4",
             expiration=timedelta(hours=6),
             method="GET",
         )
     except Exception:
-        encoded_key = quote(object_key, safe="")
-        return f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{encoded_key}?alt=media"
+        encoded_key = quote(object_path, safe="")
+        return f"https://firebasestorage.googleapis.com/v0/b/{resolved_bucket}/o/{encoded_key}?alt=media"
 
 
 def _replace_formula_images(formula: Formula, image_payloads: Sequence[FormulaImageWrite]) -> None:

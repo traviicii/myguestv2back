@@ -300,3 +300,49 @@ def test_resolve_image_public_url_uses_firebase_bucket_for_object_keys(monkeypat
     assert _resolve_image_public_url(image) == "https://signed.example.com/process-shot.png"
     assert seen["bucket_name"] == "myguest-test-bucket"
     assert seen["object_path"] == "formula-images/process-shot.png"
+
+
+def test_resolve_image_public_url_refreshes_legacy_firebase_download_urls(monkeypatch):
+    image = FormulaImage(
+        id=11,
+        formula_id=99,
+        storage_provider="firebase",
+        public_url=(
+            "https://firebasestorage.googleapis.com/v0/b/custom-bucket/o/"
+            "formula-images%2Fclient-1%2Fafter.jpg?alt=media&token=stale-token"
+        ),
+        object_key=None,
+        file_name="after.jpg",
+    )
+    seen: dict[str, object] = {}
+
+    class FakeBlob:
+        def generate_signed_url(self, *, version: str, expiration, method: str) -> str:
+            seen["version"] = version
+            seen["method"] = method
+            return "https://signed.example.com/after.jpg"
+
+    class FakeBucket:
+        def __init__(self, bucket_name: str):
+            self.bucket_name = bucket_name
+
+        def blob(self, object_path: str) -> FakeBlob:
+            seen["bucket_name"] = self.bucket_name
+            seen["object_path"] = object_path
+            return FakeBlob()
+
+    class FakeSettings:
+        firebase_storage_bucket = "default-bucket"
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.formulas.get_settings", lambda: FakeSettings()
+    )
+    monkeypatch.setattr("app.api.v1.endpoints.formulas.firebase_admin._apps", [object()])
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.formulas.firebase_storage.bucket",
+        lambda bucket_name: FakeBucket(bucket_name),
+    )
+
+    assert _resolve_image_public_url(image) == "https://signed.example.com/after.jpg"
+    assert seen["bucket_name"] == "custom-bucket"
+    assert seen["object_path"] == "formula-images/client-1/after.jpg"
