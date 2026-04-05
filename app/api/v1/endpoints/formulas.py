@@ -40,6 +40,18 @@ def _get_owned_formula(db: Session, user_id: int, formula_id: int) -> Formula:
     return formula
 
 
+def _serialize_formula_read(formula: Formula) -> FormulaRead:
+    return FormulaRead.model_validate(
+        serialize_formula(
+            formula,
+            include_images=True,
+            include_services=True,
+            include_notes=True,
+            image_limit=None,
+        )
+    )
+
+
 @router.get("/clients/{client_id}/formulas", response_model=FormulaListResponse)
 def list_client_formulas(
     client_id: int,
@@ -156,7 +168,7 @@ def create_formula(
 
     db.commit()
     formula = _get_owned_formula(db, current_user.id, formula.id)
-    return FormulaRead.model_validate(formula)
+    return _serialize_formula_read(formula)
 
 
 @router.get("/formulas/{formula_id}", response_model=FormulaRead)
@@ -166,7 +178,7 @@ def get_formula(
     db: Session = Depends(get_session),
 ) -> FormulaRead:
     formula = _get_owned_formula(db, current_user.id, formula_id)
-    return FormulaRead.model_validate(formula)
+    return _serialize_formula_read(formula)
 
 
 @router.patch("/formulas/{formula_id}", response_model=FormulaRead)
@@ -200,7 +212,7 @@ def update_formula(
 
     db.commit()
     formula = _get_owned_formula(db, current_user.id, formula.id)
-    return FormulaRead.model_validate(formula)
+    return _serialize_formula_read(formula)
 
 
 @router.delete("/formulas/{formula_id}", status_code=204)

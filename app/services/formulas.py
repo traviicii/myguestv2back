@@ -1,11 +1,15 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Literal
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
+import firebase_admin
+from firebase_admin import storage as firebase_storage
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, load_only, selectinload
 
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.service_names import format_service_name, normalize_service_key
 from app.models import Formula, FormulaImage, FormulaService, Service
@@ -76,7 +80,7 @@ def serialize_formula(
                 "id": image.id,
                 "formula_id": image.formula_id,
                 "storage_provider": image.storage_provider,
-                "public_url": image.public_url,
+                "public_url": _resolve_image_public_url(image),
                 "object_key": image.object_key,
                 "file_name": image.file_name,
             }
@@ -259,6 +263,36 @@ def _normalize_storage_provider(value: str | None) -> str:
     if not trimmed:
         return "firebase"
     return trimmed[:16]
+
+
+def _resolve_image_public_url(image: FormulaImage) -> str | None:
+    if image.public_url:
+        trimmed = image.public_url.strip()
+        if trimmed:
+            return trimmed
+
+    provider = (image.storage_provider or "").strip().lower()
+    object_key = (image.object_key or "").strip().lstrip("/")
+    if provider != "firebase" or not object_key:
+        return None
+
+    settings = get_settings()
+    bucket_name = (settings.firebase_storage_bucket or "").strip()
+    if not bucket_name:
+        return None
+
+    try:
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(options={"storageBucket": bucket_name})
+        blob = firebase_storage.bucket(bucket_name).blob(object_key)
+        return blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(hours=6),
+            method="GET",
+        )
+    except Exception:
+        encoded_key = quote(object_key, safe="")
+        return f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{encoded_key}?alt=media"
 
 
 def _dedupe_ids_preserve_order(ids: Sequence[int]) -> list[int]:
