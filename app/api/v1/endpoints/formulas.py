@@ -1,12 +1,16 @@
 from collections.abc import Sequence
+from datetime import timedelta
 from typing import Literal
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from fastapi import APIRouter, Depends, Query, Response
+import firebase_admin
+from firebase_admin import storage as firebase_storage
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, load_only, selectinload
 
 from app.api.deps import get_current_user, get_session
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.service_names import format_service_name, normalize_service_key
 from app.models import Client, Formula, FormulaImage, FormulaService, Service, User
@@ -57,7 +61,7 @@ def _serialize_formula(
                 "id": image.id,
                 "formula_id": image.formula_id,
                 "storage_provider": image.storage_provider,
-                "public_url": image.public_url,
+                "public_url": _resolve_image_public_url(image),
                 "object_key": image.object_key,
                 "file_name": image.file_name,
             }
@@ -108,6 +112,18 @@ def _get_owned_formula(db: Session, user_id: int, formula_id: int) -> Formula:
     if not formula:
         raise AppError(404, "formula_not_found", "Formula not found.")
     return formula
+
+
+def _serialize_formula_read(formula: Formula) -> FormulaRead:
+    return FormulaRead.model_validate(
+        _serialize_formula(
+            formula,
+            include_images=True,
+            include_services=True,
+            include_notes=True,
+            image_limit=None,
+        )
+    )
 
 
 def _get_next_service_sort_order(db: Session, user_id: int) -> int:
@@ -187,6 +203,36 @@ def _normalize_storage_provider(value: str | None) -> str:
     if not trimmed:
         return "firebase"
     return trimmed[:16]
+
+
+def _resolve_image_public_url(image: FormulaImage) -> str | None:
+    if image.public_url:
+        trimmed = image.public_url.strip()
+        if trimmed:
+            return trimmed
+
+    provider = (image.storage_provider or "").strip().lower()
+    object_key = (image.object_key or "").strip().lstrip("/")
+    if provider != "firebase" or not object_key:
+        return None
+
+    settings = get_settings()
+    bucket_name = (settings.firebase_storage_bucket or "").strip()
+    if not bucket_name:
+        return None
+
+    try:
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(options={"storageBucket": bucket_name})
+        blob = firebase_storage.bucket(bucket_name).blob(object_key)
+        return blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(hours=6),
+            method="GET",
+        )
+    except Exception:
+        encoded_key = quote(object_key, safe="")
+        return f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{encoded_key}?alt=media"
 
 
 def _replace_formula_images(formula: Formula, image_payloads: Sequence[FormulaImageWrite]) -> None:
@@ -421,7 +467,7 @@ def create_formula(
 
     db.commit()
     formula = _get_owned_formula(db, current_user.id, formula.id)
-    return FormulaRead.model_validate(formula)
+    return _serialize_formula_read(formula)
 
 
 @router.get("/formulas/{formula_id}", response_model=FormulaRead)
@@ -431,7 +477,7 @@ def get_formula(
     db: Session = Depends(get_session),
 ) -> FormulaRead:
     formula = _get_owned_formula(db, current_user.id, formula_id)
-    return FormulaRead.model_validate(formula)
+    return _serialize_formula_read(formula)
 
 
 @router.patch("/formulas/{formula_id}", response_model=FormulaRead)
@@ -465,7 +511,7 @@ def update_formula(
 
     db.commit()
     formula = _get_owned_formula(db, current_user.id, formula.id)
-    return FormulaRead.model_validate(formula)
+    return _serialize_formula_read(formula)
 
 
 @router.delete("/formulas/{formula_id}", status_code=204)

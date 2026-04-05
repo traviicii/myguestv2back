@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 
+from app.api.v1.endpoints.formulas import _resolve_image_public_url
+from app.models import FormulaImage
+
 
 def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
@@ -253,3 +256,47 @@ def test_formula_image_write_and_replace_flow(client):
     )
     assert cleared.status_code == 200
     assert cleared.json()["images"] == []
+
+
+def test_resolve_image_public_url_uses_firebase_bucket_for_object_keys(monkeypatch):
+    image = FormulaImage(
+        id=10,
+        formula_id=99,
+        storage_provider="firebase",
+        public_url=None,
+        object_key="formula-images/process-shot.png",
+        file_name="process-shot.png",
+    )
+    seen: dict[str, object] = {}
+
+    class FakeBlob:
+        def generate_signed_url(self, *, version: str, expiration, method: str) -> str:
+            seen["version"] = version
+            seen["method"] = method
+            seen["expiration"] = expiration
+            return "https://signed.example.com/process-shot.png"
+
+    class FakeBucket:
+        def __init__(self, bucket_name: str):
+            self.bucket_name = bucket_name
+
+        def blob(self, object_path: str) -> FakeBlob:
+            seen["bucket_name"] = self.bucket_name
+            seen["object_path"] = object_path
+            return FakeBlob()
+
+    class FakeSettings:
+        firebase_storage_bucket = "myguest-test-bucket"
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.formulas.get_settings", lambda: FakeSettings()
+    )
+    monkeypatch.setattr("app.api.v1.endpoints.formulas.firebase_admin._apps", [object()])
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.formulas.firebase_storage.bucket",
+        lambda bucket_name: FakeBucket(bucket_name),
+    )
+
+    assert _resolve_image_public_url(image) == "https://signed.example.com/process-shot.png"
+    assert seen["bucket_name"] == "myguest-test-bucket"
+    assert seen["object_path"] == "formula-images/process-shot.png"
