@@ -29,6 +29,24 @@ class FirebaseTokenVerifier:
     def verify(self, token: str) -> dict[str, Any]:
         self._initialize()
         try:
-            return auth.verify_id_token(token)
+            return auth.verify_id_token(token, check_revoked=True)
+        except auth.RevokedIdTokenError as exc:
+            raise AppError(
+                401,
+                "auth_session_revoked",
+                "This auth session has been revoked. Please sign in again.",
+            ) from exc
+        except auth.UserDisabledError as exc:
+            raise AppError(
+                403,
+                "auth_user_disabled",
+                "This Firebase account is disabled. Contact support if you need help.",
+            ) from exc
+        except auth.UserNotFoundError as exc:
+            raise AppError(
+                401,
+                "auth_session_revoked",
+                "This auth session is no longer valid. Please sign in again.",
+            ) from exc
         except Exception as exc:
             raise AppError(401, "invalid_token", "Invalid or expired auth token.") from exc

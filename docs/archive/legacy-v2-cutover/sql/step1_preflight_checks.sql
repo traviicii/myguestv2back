@@ -1,3 +1,4 @@
+-- Historical archive from the original legacy -> v2 cutover.
 -- Step 1 preflight checks for legacy schema quality.
 -- Run this against LIVE and RESTORED databases and compare results.
 

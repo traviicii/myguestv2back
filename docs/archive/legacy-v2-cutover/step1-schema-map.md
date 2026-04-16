@@ -1,5 +1,10 @@
 # Step 1: Legacy to v2 Schema Map
 
+> Historical archive: this schema map belongs to the original legacy-to-v2
+> migration effort. It is retained for audit context and does not describe the
+> full current backend after later schema additions such as `services` and
+> `formula_services`.
+
 This document is the exact mapping plan from the legacy tables in the live DB to v2 tables.
 
 ## Locked migration mode
@@ -86,7 +91,7 @@ This document is the exact mapping plan from the legacy tables in the live DB to
 ## Required preflight checks before any migration
 
 Run and pass the checks in:
-- `docs/sql/step1_preflight_checks.sql`
+- `docs/archive/legacy-v2-cutover/sql/step1_preflight_checks.sql`
 
 Critical checks:
 - No duplicate non-blank `user.uid` values.
@@ -107,6 +112,6 @@ Critical checks:
 ## Backfill SQL templates
 
 Backfill templates are in:
-- `docs/sql/step1_backfill_templates.sql`
+- `docs/archive/legacy-v2-cutover/sql/step1_backfill_templates.sql`
 
 These are templates for a migration revision, not copy-paste directly into production.

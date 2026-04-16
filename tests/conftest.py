@@ -14,6 +14,8 @@ from app.main import create_app
 
 
 class FakeVerifier:
+    REVOKED_UIDS: set[str] = set()
+    DISABLED_UIDS: set[str] = set()
     TOKENS = {
         "token-user-1": {
             "uid": "uid-1",
@@ -47,11 +49,31 @@ class FakeVerifier:
             from app.core.errors import AppError
 
             raise AppError(401, "invalid_token", "Invalid or expired auth token.")
+        uid = claims.get("uid")
+        if uid in self.DISABLED_UIDS:
+            from app.core.errors import AppError
+
+            raise AppError(
+                403,
+                "auth_user_disabled",
+                "This Firebase account is disabled. Contact support if you need help.",
+            )
+        if uid in self.REVOKED_UIDS:
+            from app.core.errors import AppError
+
+            raise AppError(
+                401,
+                "auth_session_revoked",
+                "This auth session has been revoked. Please sign in again.",
+            )
         return claims
 
 
 @pytest.fixture()
 def client() -> Generator[TestClient, None, None]:
+    FakeVerifier.REVOKED_UIDS.clear()
+    FakeVerifier.DISABLED_UIDS.clear()
+
     engine = create_engine(
         "sqlite+pysqlite://",
         connect_args={"check_same_thread": False},
@@ -64,11 +86,14 @@ def client() -> Generator[TestClient, None, None]:
     app = create_app(settings=settings)
 
     app.dependency_overrides[get_token_verifier] = lambda: FakeVerifier()
+    app.state.fake_token_verifier = FakeVerifier
     app.state.engine = engine
     app.state.session_factory = session_factory
 
     with TestClient(app) as test_client:
         yield test_client
 
+    FakeVerifier.REVOKED_UIDS.clear()
+    FakeVerifier.DISABLED_UIDS.clear()
     Base.metadata.drop_all(bind=engine)
     engine.dispose()

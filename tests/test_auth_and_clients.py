@@ -62,6 +62,24 @@ def test_sync_conflict_when_email_already_linked_to_different_uid(client):
     assert body["error"]["code"] == "auth_identity_conflict"
 
 
+def test_sync_rejects_revoked_sessions(client):
+    client.app.state.fake_token_verifier.REVOKED_UIDS.add("uid-1")
+
+    response = client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "auth_session_revoked"
+
+
+def test_sync_rejects_disabled_firebase_users(client):
+    client.app.state.fake_token_verifier.DISABLED_UIDS.add("uid-1")
+
+    response = client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "auth_user_disabled"
+
+
 def test_client_ownership_enforced(client):
     client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
     client.post("/api/v1/auth/sync", headers=_auth("token-user-2"))

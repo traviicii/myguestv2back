@@ -1,5 +1,9 @@
 # Step 1: Backup and Restore Gates (No Exceptions)
 
+> Historical archive: this runbook reflects the original legacy-to-v2 cutover
+> workflow. It is preserved for audit/reference only and should not be treated
+> as the current production procedure.
+
 Do not point v2 migrations or v2 API writes at the live database until every gate below is passed.
 
 ## Gate 0: Freeze-window readiness
@@ -40,8 +44,8 @@ pg_restore --clean --if-exists --no-owner --no-acl -d "$RESTORE_DATABASE_URL" ba
 Then run preflight checks against restored DB and live DB and compare:
 
 ```bash
-psql "$LIVE_DATABASE_URL" -f docs/sql/step1_preflight_checks.sql
-psql "$RESTORE_DATABASE_URL" -f docs/sql/step1_preflight_checks.sql
+psql "$LIVE_DATABASE_URL" -f docs/archive/legacy-v2-cutover/sql/step1_preflight_checks.sql
+psql "$RESTORE_DATABASE_URL" -f docs/archive/legacy-v2-cutover/sql/step1_preflight_checks.sql
 ```
 
 Required:

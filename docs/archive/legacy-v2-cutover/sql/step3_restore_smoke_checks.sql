@@ -1,6 +1,7 @@
+-- Historical archive from the original legacy -> v2 cutover.
 -- Step 3 smoke checks for RESTORE DB after v2 migrations.
 -- Run with:
--- psql "$RESTORE_DATABASE_URL" -f docs/sql/step3_restore_smoke_checks.sql
+-- psql "$RESTORE_DATABASE_URL" -f docs/archive/legacy-v2-cutover/sql/step3_restore_smoke_checks.sql
 
 \echo '=== Legacy tables still present ==='
 SELECT to_regclass('public."user"') AS legacy_user,
@@ -19,7 +20,7 @@ SELECT to_regclass('public.users') AS v2_users,
 \echo '=== Alembic v2 head ==='
 SELECT version_num FROM alembic_version_v2;
 
-\echo '=== Transitional UID rows (should be 7 currently) ==='
+\echo '=== Transitional UID rows (compare against the original rehearsal expectation) ==='
 SELECT COUNT(*) AS transitional_uid_rows
 FROM users
 WHERE firebase_uid IS NULL;

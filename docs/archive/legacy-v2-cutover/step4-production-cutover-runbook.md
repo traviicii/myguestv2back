@@ -1,5 +1,8 @@
 # Step 4 Production Cutover Runbook (Freeze Window)
 
+> Historical archive: this was the original production cutover runbook for the
+> legacy-to-v2 migration. Preserve it for audit/reference only.
+
 Use this only after Step 3 smoke checks pass on restore DB.
 
 ## Preconditions
@@ -39,7 +42,7 @@ alembic upgrade head
 ## 4) Post-migration DB validation
 
 ```bash
-"$PG16_BIN/psql" "$LIVE_DATABASE_URL" -f "docs/sql/step2_v2_validation.sql" > "backups/$TS_FINAL/step2.validation.live.txt"
+"$PG16_BIN/psql" "$LIVE_DATABASE_URL" -f "docs/archive/legacy-v2-cutover/sql/step2_v2_validation.sql" > "backups/$TS_FINAL/step2.validation.live.txt"
 tail -n 200 "backups/$TS_FINAL/step2.validation.live.txt"
 ```
 

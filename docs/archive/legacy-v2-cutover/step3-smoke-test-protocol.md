@@ -1,5 +1,8 @@
 # Step 3 Smoke Test Protocol (Restore DB)
 
+> Historical archive: this smoke-test checklist belongs to the original legacy
+> cutover rehearsal. Keep it for context only.
+
 Run these checks before production cutover.
 
 ## A) DB-level smoke checks
@@ -9,14 +12,15 @@ cd /Users/travispeck/Documents/coding_projects/myguestv2/myguestv2back
 LATEST_BACKUP="$(ls -td backups/* | head -1)"
 export PG16_BIN="/opt/homebrew/opt/postgresql@16/bin"
 
-"$PG16_BIN/psql" "$RESTORE_DATABASE_URL" -f "docs/sql/step3_restore_smoke_checks.sql" > "$LATEST_BACKUP/step3.smoke.restore.txt"
+"$PG16_BIN/psql" "$RESTORE_DATABASE_URL" -f "docs/archive/legacy-v2-cutover/sql/step3_restore_smoke_checks.sql" > "$LATEST_BACKUP/step3.smoke.restore.txt"
 tail -n 200 "$LATEST_BACKUP/step3.smoke.restore.txt"
 ```
 
 Pass criteria:
 - All legacy and v2 tables resolve (not null in `to_regclass`).
 - `alembic_version_v2` has `0002_backfill_v2_from_legacy`.
-- Transitional UID rows count is expected (currently `7`).
+- Transitional UID rows count matches the value recorded for the original
+  cutover rehearsal.
 
 ## B) API-level smoke checks (manual)
 

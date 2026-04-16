@@ -15,12 +15,13 @@ def test_services_crud_filters_and_scope(client):
     created_first = client.post(
         "/api/v1/services",
         headers=_auth("token-user-1"),
-        json={"name": "balayage"},
+        json={"name": "balayage", "default_return_weeks": 10},
     )
     assert created_first.status_code == 201
     first_service = created_first.json()
     assert first_service["name"] == "Balayage"
     assert first_service["is_active"] is True
+    assert first_service["default_return_weeks"] == 10
 
     created_second = client.post(
         "/api/v1/services",
@@ -74,10 +75,45 @@ def test_services_crud_filters_and_scope(client):
     renamed = client.patch(
         f"/api/v1/services/{second_service['id']}",
         headers=_auth("token-user-1"),
-        json={"name": "single PROCESS color"},
+        json={"name": "single PROCESS color", "default_return_weeks": 6},
     )
     assert renamed.status_code == 200
     assert renamed.json()["name"] == "Single Process Color"
+    assert renamed.json()["default_return_weeks"] == 6
+
+
+def test_service_default_return_weeks_validates_range_and_null_updates(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    invalid_low = client.post(
+        "/api/v1/services",
+        headers=_auth("token-user-1"),
+        json={"name": "Root Touch Up", "default_return_weeks": 0},
+    )
+    assert invalid_low.status_code == 422
+
+    invalid_high = client.post(
+        "/api/v1/services",
+        headers=_auth("token-user-1"),
+        json={"name": "Gloss", "default_return_weeks": 53},
+    )
+    assert invalid_high.status_code == 422
+
+    created = client.post(
+        "/api/v1/services",
+        headers=_auth("token-user-1"),
+        json={"name": "Haircut", "default_return_weeks": 8},
+    )
+    assert created.status_code == 201
+    service_id = created.json()["id"]
+
+    cleared = client.patch(
+        f"/api/v1/services/{service_id}",
+        headers=_auth("token-user-1"),
+        json={"default_return_weeks": None},
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["default_return_weeks"] is None
 
 
 def test_formula_multi_service_create_and_update(client):
@@ -317,7 +353,7 @@ def test_resolve_image_public_url_prefers_existing_firebase_public_url(monkeypat
     )
 
     def fail_if_called(bucket_name: str):
-        raise AssertionError(f'storage bucket should not be used: {bucket_name}')
+        raise AssertionError(f"storage bucket should not be used: {bucket_name}")
 
     monkeypatch.setattr("app.api.v1.endpoints.formulas.firebase_admin._apps", [object()])
     monkeypatch.setattr(
@@ -326,5 +362,3 @@ def test_resolve_image_public_url_prefers_existing_firebase_public_url(monkeypat
     )
 
     assert _resolve_image_public_url(image) == legacy_url
-
-

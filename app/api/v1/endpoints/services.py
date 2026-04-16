@@ -98,6 +98,7 @@ def create_service(
         if payload.sort_order is not None
         else _get_next_sort_order(db, current_user.id),
         default_price_cents=payload.default_price_cents,
+        default_return_weeks=payload.default_return_weeks,
         is_active=True,
     )
     db.add(service)
@@ -141,6 +142,9 @@ def update_service(
 
     if "default_price_cents" in payload_values:
         service.default_price_cents = payload_values.get("default_price_cents")
+
+    if "default_return_weeks" in payload_values:
+        service.default_return_weeks = payload_values.get("default_return_weeks")
 
     if payload.is_active is not None:
         service.is_active = payload.is_active

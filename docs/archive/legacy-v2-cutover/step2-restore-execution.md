@@ -1,5 +1,9 @@
 # Step 2: Execute v2 Schema + Backfill on Restore DB
 
+> Historical archive: this document captures the original restore-database
+> migration procedure. Alembic heads and operational expectations here are
+> specific to that cutover window.
+
 Run these commands from:
 `/Users/travispeck/Documents/coding_projects/myguestv2/myguestv2back`
 
@@ -15,7 +19,7 @@ Run these commands from:
 alembic history
 ```
 
-Expected heads include:
+At the time of the original cutover, the working migration head sequence was:
 - `0001_create_v2_schema`
 - `0002_backfill_v2_from_legacy`
 
@@ -32,7 +36,7 @@ This creates v2 tables and backfills from legacy tables.
 
 ```bash
 LATEST_BACKUP="$(ls -td backups/* | head -1)"
-"$PG16_BIN/psql" "$RESTORE_DATABASE_URL" -f "docs/sql/step2_v2_validation.sql" > "$LATEST_BACKUP/step2.validation.restore.txt"
+"$PG16_BIN/psql" "$RESTORE_DATABASE_URL" -f "docs/archive/legacy-v2-cutover/sql/step2_v2_validation.sql" > "$LATEST_BACKUP/step2.validation.restore.txt"
 tail -n 200 "$LATEST_BACKUP/step2.validation.restore.txt"
 ```
 

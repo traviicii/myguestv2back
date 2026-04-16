@@ -15,6 +15,7 @@ class Service(Base, TimestampMixin):
     normalized_name: Mapped[str] = mapped_column(String(96))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     default_price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    default_return_weeks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     owner = relationship("User", back_populates="services")

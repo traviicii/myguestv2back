@@ -1,6 +1,6 @@
+-- Historical archive from the original legacy -> v2 cutover.
 -- Template SQL for legacy -> v2 backfill.
--- Use inside a migration script or controlled maintenance transaction.
--- Review and adapt before production execution.
+-- Use only as reference if reconstructing that migration.
 
 BEGIN;
 

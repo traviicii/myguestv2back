@@ -1,3 +1,4 @@
+-- Historical archive from the original legacy -> v2 cutover.
 -- Validate legacy -> v2 backfill results (run on restore DB after alembic upgrade head)
 
 \echo '=== Legacy vs v2 table counts ==='

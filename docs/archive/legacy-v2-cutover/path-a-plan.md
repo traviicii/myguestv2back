@@ -1,5 +1,9 @@
 # Path A Refinement Plan
 
+> Historical archive: this was the initial decision record for the legacy-to-v2
+> backend migration. Keep it for context only; it is not maintained as current
+> backend guidance.
+
 ## Decisions locked
 
 - Keep Firebase Auth now, but harden flow.
@@ -34,10 +38,10 @@
 6. Deprecate legacy columns after verification.
 
 Step 1 artifacts:
-- `docs/step1-schema-map.md`
-- `docs/step1-backup-and-restore-gates.md`
-- `docs/sql/step1_preflight_checks.sql`
-- `docs/sql/step1_backfill_templates.sql`
+- `docs/archive/legacy-v2-cutover/step1-schema-map.md`
+- `docs/archive/legacy-v2-cutover/step1-backup-and-restore-gates.md`
+- `docs/archive/legacy-v2-cutover/sql/step1_preflight_checks.sql`
+- `docs/archive/legacy-v2-cutover/sql/step1_backfill_templates.sql`
 
 ## Firebase Storage to S3/R2 later
 

@@ -9,12 +9,14 @@ class ServiceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=96)
     sort_order: int | None = None
     default_price_cents: int | None = Field(default=None, ge=0)
+    default_return_weeks: int | None = Field(default=None, ge=1, le=52)
 
 
 class ServiceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=96)
     sort_order: int | None = None
     default_price_cents: int | None = Field(default=None, ge=0)
+    default_return_weeks: int | None = Field(default=None, ge=1, le=52)
     is_active: bool | None = None
 
 
@@ -25,6 +27,7 @@ class ServiceRead(ORMModel):
     normalized_name: str
     sort_order: int
     default_price_cents: int | None
+    default_return_weeks: int | None
     is_active: bool
     usage_count: int
     created_at: datetime

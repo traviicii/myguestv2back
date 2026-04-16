@@ -107,7 +107,7 @@ def export_data(
             chart.scalp_condition,
             chart.natural_level,
             chart.desired_level,
-            chart.contributing_pigment,
+            chart.contrib_pigment,
             chart.gray_front,
             chart.gray_sides,
             chart.gray_back,

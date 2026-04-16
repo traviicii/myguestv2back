@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1360" viewBox="0 0 1600 1360" role="img" aria-labelledby="title desc">
+  <title id="title">MyGuest v2 Detailed ERD</title>
+  <desc id="desc">Detailed entity relationship diagram for MyGuest with table-style boxes, key columns, and classic ERD cardinality markers.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f8fc"/>
+      <stop offset="100%" stop-color="#edf2ff"/>
+    </linearGradient>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#20314a"/>
+      <stop offset="100%" stop-color="#2e4668"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#24324a" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 34px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #142033; }
+      .subtitle { font: 500 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #51627c; }
+      .table-name { font: 700 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #ffffff; }
+      .table-label { font: 500 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #d8e4f7; letter-spacing: 0.08em; text-transform: uppercase; }
+      .row { font: 500 14px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #2e3e58; }
+      .legend-title { font: 700 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #17253a; }
+      .legend-copy { font: 500 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4f5f79; }
+      .line { stroke: #66748f; stroke-width: 3; fill: none; stroke-linecap: round; }
+      .marker { stroke: #66748f; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .marker-fill { stroke: #66748f; stroke-width: 3; fill: #ffffff; }
+      .divider { stroke: #dbe4f3; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1360" fill="url(#bg)"/>
+
+  <text class="title" x="64" y="70">MyGuest v2 Detailed ERD</text>
+  <text class="subtitle" x="64" y="100">Technical table-level view of the live backend schema with crow&apos;s-foot style cardinality markers.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="1260" y="46" rx="16" ry="16" width="280" height="156" fill="#ffffff" stroke="#d8e1f0"/>
+    <text class="legend-title" x="1284" y="78">Cardinality legend</text>
+    <line class="line" x1="1288" y1="104" x2="1352" y2="104"/>
+    <line class="marker" x1="1296" y1="94" x2="1296" y2="114"/>
+    <line class="marker" x1="1308" y1="94" x2="1308" y2="114"/>
+    <text class="legend-copy" x="1366" y="109">exactly one</text>
+    <line class="line" x1="1288" y1="138" x2="1352" y2="138"/>
+    <circle class="marker-fill" cx="1296" cy="138" r="7"/>
+    <line class="marker" x1="1310" y1="128" x2="1310" y2="148"/>
+    <text class="legend-copy" x="1366" y="143">zero or one</text>
+    <line class="line" x1="1288" y1="172" x2="1352" y2="172"/>
+    <circle class="marker-fill" cx="1296" cy="172" r="7"/>
+    <path class="marker" d="M 1344 172 L 1356 162"/>
+    <path class="marker" d="M 1344 172 L 1358 172"/>
+    <path class="marker" d="M 1344 172 L 1356 182"/>
+    <text class="legend-copy" x="1366" y="177">zero or many</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="620" y="130" rx="18" ry="18" width="360" height="246" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="620" y="130" rx="18" ry="18" width="360" height="58" fill="url(#header)"/>
+    <text class="table-name" x="644" y="162">users</text>
+    <text class="table-label" x="644" y="183">Account</text>
+    <line class="divider" x1="620" y1="200" x2="980" y2="200"/>
+    <text class="row" x="644" y="226">PK  id : integer</text>
+    <text class="row" x="644" y="248">UK  firebase_uid : string nullable</text>
+    <text class="row" x="644" y="270">UK  email : string</text>
+    <text class="row" x="644" y="292">    first_name : string nullable</text>
+    <text class="row" x="644" y="314">    last_name : string nullable</text>
+    <text class="row" x="644" y="336">    photo_url : string nullable</text>
+    <text class="row" x="644" y="358">    created_at / updated_at : datetime</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="410" rx="18" ry="18" width="420" height="304" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="70" y="410" rx="18" ry="18" width="420" height="58" fill="url(#header)"/>
+    <text class="table-name" x="94" y="442">clients</text>
+    <text class="table-label" x="94" y="463">Client</text>
+    <line class="divider" x1="70" y1="480" x2="490" y2="480"/>
+    <text class="row" x="94" y="506">PK  id : integer</text>
+    <text class="row" x="94" y="528">FK  owner_user_id : integer</text>
+    <text class="row" x="94" y="550">    first_name : string</text>
+    <text class="row" x="94" y="572">    last_name : string</text>
+    <text class="row" x="94" y="594">    email : string nullable</text>
+    <text class="row" x="94" y="616">    phone : string nullable</text>
+    <text class="row" x="94" y="638">    birthday : date nullable</text>
+    <text class="row" x="94" y="660">    client_type : string nullable</text>
+    <text class="row" x="94" y="682">    notes : text nullable</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="610" y="440" rx="18" ry="18" width="390" height="238" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="610" y="440" rx="18" ry="18" width="390" height="58" fill="url(#header)"/>
+    <text class="table-name" x="634" y="472">formulas</text>
+    <text class="table-label" x="634" y="493">Appointment Log</text>
+    <line class="divider" x1="610" y1="510" x2="1000" y2="510"/>
+    <text class="row" x="634" y="536">PK  id : integer</text>
+    <text class="row" x="634" y="558">FK  client_id : integer</text>
+    <text class="row" x="634" y="580">    service_type : string nullable</text>
+    <text class="row" x="634" y="602">    notes : text nullable</text>
+    <text class="row" x="634" y="624">    price_cents : integer nullable</text>
+    <text class="row" x="634" y="646">    service_at : datetime</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1120" y="380" rx="18" ry="18" width="400" height="280" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="1120" y="380" rx="18" ry="18" width="400" height="58" fill="url(#header)"/>
+    <text class="table-name" x="1144" y="412">services</text>
+    <text class="table-label" x="1144" y="433">Service Preset</text>
+    <line class="divider" x1="1120" y1="450" x2="1520" y2="450"/>
+    <text class="row" x="1144" y="476">PK  id : integer</text>
+    <text class="row" x="1144" y="498">FK  owner_user_id : integer</text>
+    <text class="row" x="1144" y="520">    name : string</text>
+    <text class="row" x="1144" y="542">    normalized_name : string</text>
+    <text class="row" x="1144" y="564">    sort_order : integer</text>
+    <text class="row" x="1144" y="586">    default_price_cents : integer nullable</text>
+    <text class="row" x="1144" y="608">    default_return_weeks : integer nullable</text>
+    <text class="row" x="1144" y="630">    is_active : boolean</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="40" y="800" rx="18" ry="18" width="450" height="452" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="40" y="800" rx="18" ry="18" width="450" height="58" fill="url(#header)"/>
+    <text class="table-name" x="64" y="832">color_charts</text>
+    <text class="table-label" x="64" y="853">Color Profile</text>
+    <line class="divider" x1="40" y1="870" x2="490" y2="870"/>
+    <text class="row" x="64" y="896">PK  id : integer</text>
+    <text class="row" x="64" y="918">FK  client_id : integer unique</text>
+    <text class="row" x="64" y="940">    porosity : string nullable</text>
+    <text class="row" x="64" y="962">    hair_texture : string nullable</text>
+    <text class="row" x="64" y="984">    elasticity : string nullable</text>
+    <text class="row" x="64" y="1006">    scalp_condition : string nullable</text>
+    <text class="row" x="64" y="1028">    natural_level : string nullable</text>
+    <text class="row" x="64" y="1050">    desired_level : string nullable</text>
+    <text class="row" x="64" y="1072">    contrib_pigment : string nullable</text>
+    <text class="row" x="64" y="1094">    gray_front : string nullable</text>
+    <text class="row" x="64" y="1116">    gray_sides : string nullable</text>
+    <text class="row" x="64" y="1138">    gray_back : string nullable</text>
+    <text class="row" x="64" y="1160">    skin_depth : string nullable</text>
+    <text class="row" x="64" y="1182">    skin_tone : string nullable</text>
+    <text class="row" x="64" y="1204">    eye_color : string nullable</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="610" y="830" rx="18" ry="18" width="390" height="220" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="610" y="830" rx="18" ry="18" width="390" height="58" fill="url(#header)"/>
+    <text class="table-name" x="634" y="862">formula_images</text>
+    <text class="table-label" x="634" y="883">Appointment Photo</text>
+    <line class="divider" x1="610" y1="900" x2="1000" y2="900"/>
+    <text class="row" x="634" y="926">PK  id : integer</text>
+    <text class="row" x="634" y="948">FK  formula_id : integer</text>
+    <text class="row" x="634" y="970">    storage_provider : string</text>
+    <text class="row" x="634" y="992">    public_url : text nullable</text>
+    <text class="row" x="634" y="1014">    object_key : string nullable</text>
+    <text class="row" x="634" y="1036">    file_name : string</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1090" y="830" rx="18" ry="18" width="430" height="220" fill="#ffffff" stroke="#d9e2f0"/>
+    <rect x="1090" y="830" rx="18" ry="18" width="430" height="58" fill="url(#header)"/>
+    <text class="table-name" x="1114" y="862">formula_services</text>
+    <text class="table-label" x="1114" y="883">Appointment Service Link</text>
+    <line class="divider" x1="1090" y1="900" x2="1520" y2="900"/>
+    <text class="row" x="1114" y="926">PK  id : integer</text>
+    <text class="row" x="1114" y="948">FK  formula_id : integer</text>
+    <text class="row" x="1114" y="970">FK  service_id : integer</text>
+    <text class="row" x="1114" y="992">    service_label_snapshot : string</text>
+    <text class="row" x="1114" y="1014">    position : integer</text>
+    <text class="row" x="1114" y="1036">UK  (formula_id, service_id), (formula_id, position)</text>
+  </g>
+
+  <!-- users -> clients -->
+  <line class="line" x1="620" y1="252" x2="560" y2="252"/>
+  <line class="line" x1="560" y1="252" x2="560" y2="380"/>
+  <line class="line" x1="560" y1="380" x2="280" y2="380"/>
+  <line class="line" x1="280" y1="380" x2="280" y2="410"/>
+  <line class="marker" x1="594" y1="242" x2="594" y2="262"/>
+  <line class="marker" x1="606" y1="242" x2="606" y2="262"/>
+  <circle class="marker-fill" cx="280" cy="388" r="7"/>
+  <path class="marker" d="M 280 398 L 270 410"/>
+  <path class="marker" d="M 280 398 L 280 410"/>
+  <path class="marker" d="M 280 398 L 290 410"/>
+
+  <!-- users -> services -->
+  <line class="line" x1="980" y1="252" x2="1060" y2="252"/>
+  <line class="line" x1="1060" y1="252" x2="1060" y2="520"/>
+  <line class="line" x1="1060" y1="520" x2="1120" y2="520"/>
+  <line class="marker" x1="994" y1="242" x2="994" y2="262"/>
+  <line class="marker" x1="1006" y1="242" x2="1006" y2="262"/>
+  <circle class="marker-fill" cx="1098" cy="520" r="7"/>
+  <path class="marker" d="M 1110 520 L 1120 510"/>
+  <path class="marker" d="M 1110 520 L 1120 520"/>
+  <path class="marker" d="M 1110 520 L 1120 530"/>
+
+  <!-- clients -> color_charts -->
+  <line class="line" x1="265" y1="714" x2="265" y2="800"/>
+  <line class="marker" x1="255" y1="728" x2="275" y2="728"/>
+  <line class="marker" x1="255" y1="740" x2="275" y2="740"/>
+  <circle class="marker-fill" cx="265" cy="776" r="7"/>
+  <line class="line" x1="265" y1="783" x2="265" y2="790"/>
+  <line class="marker" x1="255" y1="800" x2="275" y2="800"/>
+
+  <!-- clients -> formulas -->
+  <line class="line" x1="490" y1="560" x2="610" y2="560"/>
+  <line class="marker" x1="504" y1="550" x2="504" y2="570"/>
+  <line class="marker" x1="516" y1="550" x2="516" y2="570"/>
+  <circle class="marker-fill" cx="588" cy="560" r="7"/>
+  <path class="marker" d="M 600 560 L 610 550"/>
+  <path class="marker" d="M 600 560 L 610 560"/>
+  <path class="marker" d="M 600 560 L 610 570"/>
+
+  <!-- formulas -> formula_images -->
+  <line class="line" x1="805" y1="678" x2="805" y2="830"/>
+  <line class="marker" x1="795" y1="692" x2="815" y2="692"/>
+  <line class="marker" x1="795" y1="704" x2="815" y2="704"/>
+  <circle class="marker-fill" cx="805" cy="806" r="7"/>
+  <path class="marker" d="M 805 818 L 793 830"/>
+  <path class="marker" d="M 805 818 L 805 830"/>
+  <path class="marker" d="M 805 818 L 817 830"/>
+
+  <!-- formulas -> formula_services -->
+  <line class="line" x1="1000" y1="560" x2="1060" y2="560"/>
+  <line class="line" x1="1060" y1="560" x2="1060" y2="940"/>
+  <line class="line" x1="1060" y1="940" x2="1090" y2="940"/>
+  <line class="marker" x1="1014" y1="550" x2="1014" y2="570"/>
+  <line class="marker" x1="1026" y1="550" x2="1026" y2="570"/>
+  <circle class="marker-fill" cx="1068" cy="940" r="7"/>
+  <path class="marker" d="M 1080 940 L 1090 930"/>
+  <path class="marker" d="M 1080 940 L 1090 940"/>
+  <path class="marker" d="M 1080 940 L 1090 950"/>
+
+  <!-- services -> formula_services -->
+  <line class="line" x1="1320" y1="660" x2="1320" y2="830"/>
+  <line class="marker" x1="1310" y1="674" x2="1330" y2="674"/>
+  <line class="marker" x1="1310" y1="686" x2="1330" y2="686"/>
+  <circle class="marker-fill" cx="1320" cy="806" r="7"/>
+  <path class="marker" d="M 1320 818 L 1308 830"/>
+  <path class="marker" d="M 1320 818 L 1320 830"/>
+  <path class="marker" d="M 1320 818 L 1332 830"/>
+</svg>
