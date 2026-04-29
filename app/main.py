@@ -5,6 +5,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
+from app.core.middleware import (
+    RateLimitMiddleware,
+    RequestContextMiddleware,
+    build_rate_limiter,
+)
 from app.core.security import FirebaseTokenVerifier
 from app.db.session import build_engine, build_session_maker
 
@@ -38,6 +43,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = build_session_maker(engine)
     app.state.token_verifier = FirebaseTokenVerifier(settings)
+    app.state.rate_limiter = build_rate_limiter(
+        enabled=settings.enable_rate_limits,
+        window_seconds=settings.rate_limit_window_seconds,
+        auth_sync_limit=settings.auth_sync_rate_limit,
+        exports_limit=settings.exports_rate_limit,
+        account_delete_limit=settings.account_delete_rate_limit,
+    )
+
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestContextMiddleware)
 
     register_error_handlers(app)
     app.include_router(api_router, prefix="/api/v1")

@@ -16,6 +16,7 @@ This is the backend gate for shipping the iOS app with confidence.
 - [ ] Render deploy command runs migrations before app boot.
 - [ ] Health endpoint is used by uptime monitoring.
 - [ ] Error monitoring is configured for backend exceptions and elevated 5xx rates.
+- [x] API responses include `X-Request-ID` for traceability across client and backend logs.
 - [ ] Database backup and restore drill has a recent successful run.
 - [ ] Rollback steps are documented for both app code and database migrations.
 
@@ -23,6 +24,7 @@ This is the backend gate for shipping the iOS app with confidence.
 
 - [ ] `/docs`, `/redoc`, and `/openapi.json` stay disabled in production unless intentionally exposed.
 - [ ] Only expected frontend origins are allowed in `CORS_ORIGINS`.
+- [x] Targeted rate limits protect `auth/sync`, exports, and account deletion paths.
 - [ ] Exported archives are tested with real user data and stay scoped to the authenticated owner.
 - [ ] Storage cleanup failures are logged and reviewed so account deletion does not silently leak data.
 
@@ -36,7 +38,7 @@ This is the backend gate for shipping the iOS app with confidence.
 
 ## Recommended next steps
 
-1. Add lightweight rate limiting on auth sync, exports, and account deletion.
-2. Add structured request logging with request IDs.
-3. Add a production smoke job in CI or a release checklist script.
-4. Add alerting for repeated 5xx responses and failed auth-provider readiness checks.
+1. Add a production smoke job in CI or a release checklist script.
+2. Add alerting for repeated 5xx responses and failed auth-provider readiness checks.
+3. Add durable shared rate limiting if the API will scale beyond a single app instance.
+4. Add explicit Sentry or equivalent exception monitoring on the deployed backend.

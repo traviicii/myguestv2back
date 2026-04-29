@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     api_docs_enabled: bool | None = None
     firebase_credentials_path: str | None = None
     firebase_storage_bucket: str | None = None
+    rate_limit_enabled: bool | None = None
+    rate_limit_window_seconds: int = 60
+    auth_sync_rate_limit: int = 20
+    exports_rate_limit: int = 10
+    account_delete_rate_limit: int = 5
 
     @field_validator("app_env", mode="before")
     @classmethod
@@ -80,6 +85,12 @@ class Settings(BaseSettings):
         if self.api_docs_enabled is not None:
             return self.api_docs_enabled
         return not self.is_production
+
+    @property
+    def enable_rate_limits(self) -> bool:
+        if self.rate_limit_enabled is not None:
+            return self.rate_limit_enabled
+        return self.is_production
 
     @property
     def resolved_trusted_hosts(self) -> list[str]:

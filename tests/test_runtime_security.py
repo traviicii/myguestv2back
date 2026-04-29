@@ -101,3 +101,38 @@ def test_health_returns_503_when_auth_backend_is_not_ready(client):
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "auth_provider_unavailable"
+
+
+def test_request_id_header_is_echoed_on_unexpected_errors():
+    app = create_app(Settings(database_url="sqlite+pysqlite://"))
+
+    @app.get("/api/v1/test-crash")
+    def crash():
+        raise RuntimeError("boom")
+
+    with TestClient(app, raise_server_exceptions=False) as crash_client:
+        response = crash_client.get(
+            "/api/v1/test-crash",
+            headers={"X-Request-ID": "launch-check-123"},
+        )
+
+    assert response.status_code == 500
+    assert response.json()["error"]["code"] == "internal_server_error"
+    assert response.headers["x-request-id"] == "launch-check-123"
+
+
+def test_auth_sync_rate_limit_returns_429(client):
+    client.app.state.rate_limiter.enabled = True
+    client.app.state.rate_limiter.window_seconds = 60
+    client.app.state.rate_limiter.rules["auth_sync"].limit = 1
+
+    first = client.post("/api/v1/auth/sync", headers={"Authorization": "Bearer token-user-1"})
+    second = client.post("/api/v1/auth/sync", headers={"Authorization": "Bearer token-user-1"})
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "rate_limited"
+    assert second.json()["error"]["details"]["scope"] == "auth_sync"
+    assert "retry_after_seconds" in second.json()["error"]["details"]
+    assert second.headers["retry-after"]
+    assert second.headers["x-request-id"]

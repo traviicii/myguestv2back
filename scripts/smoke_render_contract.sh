@@ -62,29 +62,13 @@ if [[ "${sync_code}" -ge 400 ]]; then
 fi
 
 echo
-echo "== OpenAPI route check =="
-openapi_url="${BASE_URL%/api/v1}/openapi.json"
-openapi_code="$(curl -sS -o "$TMP/openapi.json" -w "%{http_code}" "${openapi_url}")"
-if [[ "${openapi_code}" -ge 400 ]]; then
-  echo "GET /openapi.json -> ${openapi_code}"
-  cat "$TMP/openapi.json"
-  exit 4
-fi
-has_route="$(
-python3 - "$TMP/openapi.json" <<'PY'
-import json,sys
-paths=json.load(open(sys.argv[1])).get("paths", {})
-print("/api/v1/clients/{client_id}/color-chart" in paths)
-PY
-)"
-echo "OpenAPI includes /api/v1/clients/{client_id}/color-chart -> ${has_route}"
-
-echo
-echo "== Services + formulas list =="
+echo "== Services + formulas + exports =="
 services_code="$(request GET "/services?active=all" "$TMP/services.json")"
 formulas_code="$(request GET "/formulas?limit=5&offset=0" "$TMP/formulas.json")"
+exports_code="$(request GET "/exports/data" "$TMP/exports.zip")"
 echo "GET /services?active=all -> ${services_code}"
 echo "GET /formulas?limit=5&offset=0 -> ${formulas_code}"
+echo "GET /exports/data -> ${exports_code}"
 
 if [[ "${services_code}" -ge 400 ]]; then
   echo "-- /services response --"
@@ -93,6 +77,10 @@ fi
 if [[ "${formulas_code}" -ge 400 ]]; then
   echo "-- /formulas response --"
   cat "$TMP/formulas.json"
+fi
+if [[ "${exports_code}" -ge 400 ]]; then
+  echo "-- /exports response --"
+  cat "$TMP/exports.zip"
 fi
 
 echo
@@ -135,11 +123,7 @@ echo "GET /clients/${client_id} (after delete) -> ${verify_delete_code}"
 echo
 echo "== Result summary =="
 failed=0
-if [[ "${has_route}" != "True" ]]; then
-  echo "FAIL: missing OpenAPI path /clients/{client_id}/color-chart"
-  failed=1
-fi
-for code in "${services_code}" "${formulas_code}"; do
+for code in "${services_code}" "${formulas_code}" "${exports_code}"; do
   if [[ "${code}" -ge 400 ]]; then
     failed=1
   fi

@@ -52,6 +52,10 @@ remote smoke step before preview/TestFlight frontend builds.
   host-header validation is enforced instead of left implicit.
 - CORS now defaults to `allow_credentials=false`, which is the safer baseline
   for this bearer-token API.
+- Targeted rate limits protect `/auth/sync`, `/exports/data`, and
+  `/account/delete` in production by default.
+- Responses include `X-Request-ID`, and request/error logs include that ID for
+  backend tracing.
 
 ## Migrations
 
