@@ -179,24 +179,26 @@ class RequestContextMiddleware:
                     duration_ms,
                     client_host,
                 )
-                return
+            else:
+                level = logging.INFO
+                if status_code >= 500:
+                    level = logging.ERROR
+                elif status_code >= 400:
+                    level = logging.WARNING
 
-            level = logging.INFO
-            if status_code >= 500:
-                level = logging.ERROR
-            elif status_code >= 400:
-                level = logging.WARNING
-
-            logger.log(
-                level,
-                "request_completed request_id=%s method=%s path=%s status=%s duration_ms=%.2f client=%s",
-                request_id,
-                request.method,
-                request.url.path,
-                status_code,
-                duration_ms,
-                client_host,
-            )
+                logger.log(
+                    level,
+                    (
+                        "request_completed request_id=%s method=%s path=%s "
+                        "status=%s duration_ms=%.2f client=%s"
+                    ),
+                    request_id,
+                    request.method,
+                    request.url.path,
+                    status_code,
+                    duration_ms,
+                    client_host,
+                )
 
 
 class RateLimitMiddleware:

@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_token_verifier
-from app.core.errors import AppError
 from app.core.config import Settings
+from app.core.errors import AppError
 from app.main import create_app
 
 
