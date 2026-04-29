@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import Literal
 from urllib.parse import quote, unquote, urlparse
 
-from fastapi import APIRouter, Depends, Query, Response
 import firebase_admin
+from fastapi import APIRouter, Depends, Query, Response
 from firebase_admin import storage as firebase_storage
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, load_only, selectinload
@@ -122,7 +122,9 @@ def _serialize_formula(
 
 
 def _get_owned_client(db: Session, user_id: int, client_id: int) -> Client:
-    client = db.scalar(select(Client).where(Client.id == client_id, Client.owner_user_id == user_id))
+    client = db.scalar(
+        select(Client).where(Client.id == client_id, Client.owner_user_id == user_id)
+    )
     if not client:
         raise AppError(404, "client_not_found", "Client not found.")
     return client

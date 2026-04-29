@@ -48,7 +48,10 @@ def list_clients(
 
     # Compute total separately so clients can render pagination UI without
     # a second round-trip.
-    total = db.scalar(select(func.count(Client.id)).where(Client.owner_user_id == current_user.id)) or 0
+    total = (
+        db.scalar(select(func.count(Client.id)).where(Client.owner_user_id == current_user.id))
+        or 0
+    )
     stmt = (
         select(Client)
         .where(Client.owner_user_id == current_user.id)

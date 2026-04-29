@@ -2,7 +2,6 @@ from typing import Literal
 
 # Service catalog endpoints.
 # These enforce normalized names so duplicates cannot be created with different casing.
-
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -65,7 +64,7 @@ def list_services(
     )
     items: list[ServiceRead] = []
     for service, usage_count in rows:
-        setattr(service, "usage_count", int(usage_count or 0))
+        service.usage_count = int(usage_count or 0)
         items.append(ServiceRead.model_validate(service))
     return ServiceListResponse(items=items)
 
@@ -104,7 +103,7 @@ def create_service(
     db.add(service)
     db.commit()
     db.refresh(service)
-    setattr(service, "usage_count", 0)
+    service.usage_count = 0
     return ServiceRead.model_validate(service)
 
 
@@ -151,7 +150,7 @@ def update_service(
 
     db.commit()
     db.refresh(service)
-    setattr(service, "usage_count", _get_service_usage_count(db, service.id))
+    service.usage_count = _get_service_usage_count(db, service.id)
     return ServiceRead.model_validate(service)
 
 
