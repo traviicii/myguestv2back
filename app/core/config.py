@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     api_docs_enabled: bool | None = None
     firebase_credentials_path: str | None = None
     firebase_storage_bucket: str | None = None
+    db_pool_size: int = 5
+    db_max_overflow: int = 2
+    db_pool_timeout_seconds: int = 30
+    db_pool_recycle_seconds: int = 1800
+    db_pool_use_lifo: bool = True
     rate_limit_enabled: bool | None = None
     rate_limit_window_seconds: int = 60
     auth_sync_rate_limit: int = 20

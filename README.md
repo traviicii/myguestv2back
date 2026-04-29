@@ -102,8 +102,38 @@ Use:
 bash scripts/start_render.sh
 ```
 
-This runs `alembic upgrade head` before starting Uvicorn so schema stays aligned
-with deployed API code.
+By default this runs `alembic upgrade head` and then starts Uvicorn. It also
+respects:
+
+- `WEB_CONCURRENCY`
+- `RUN_MIGRATIONS_ON_BOOT`
+- `LOG_LEVEL`
+
+For a single-instance preview deployment, leaving migrations on at boot is
+acceptable. For a scaled production deployment, prefer:
+
+- `RUN_MIGRATIONS_ON_BOOT=false`
+- run `alembic upgrade head` as a one-off deploy/release step
+- set `WEB_CONCURRENCY` explicitly for the instance class
+
+See:
+
+- `/Users/travispeck/Documents/coding_projects/myguestv2/myguestv2back/docs/render-production-baseline.md`
+
+## Database Pooling
+
+The API now exposes explicit SQLAlchemy pool tuning through env vars:
+
+```bash
+DB_POOL_SIZE=5
+DB_MAX_OVERFLOW=2
+DB_POOL_TIMEOUT_SECONDS=30
+DB_POOL_RECYCLE_SECONDS=1800
+DB_POOL_USE_LIFO=true
+```
+
+These defaults are conservative and intended to keep total Postgres connections
+bounded as worker count grows.
 
 ## Project Map
 

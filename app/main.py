@@ -39,7 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    engine = build_engine(settings.database_url)
+    engine = build_engine(settings)
     app.state.engine = engine
     app.state.session_factory = build_session_maker(engine)
     app.state.token_verifier = FirebaseTokenVerifier(settings)
