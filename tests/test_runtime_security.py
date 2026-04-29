@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from app.api.deps import get_token_verifier
+from app.core.errors import AppError
 from app.core.config import Settings
 from app.main import create_app
 
@@ -63,3 +65,39 @@ def test_trusted_host_middleware_rejects_unconfigured_hosts():
 
     assert ok.status_code == 200
     assert blocked.status_code == 400
+
+
+def test_health_reports_database_and_auth_checks(client):
+    response = client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "checks": {
+            "database": "ok",
+            "auth": "ok",
+        },
+    }
+
+
+def test_health_returns_503_when_auth_backend_is_not_ready(client):
+    class BrokenVerifier:
+        def check_ready(self):
+            raise AppError(
+                503,
+                "auth_provider_unavailable",
+                "Firebase auth backend is not ready.",
+            )
+
+    original_override = client.app.dependency_overrides.get(get_token_verifier)
+    client.app.dependency_overrides[get_token_verifier] = lambda: BrokenVerifier()
+    try:
+        response = client.get("/api/v1/health")
+    finally:
+        if original_override is None:
+            client.app.dependency_overrides.pop(get_token_verifier, None)
+        else:
+            client.app.dependency_overrides[get_token_verifier] = original_override
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "auth_provider_unavailable"

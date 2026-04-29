@@ -1,3 +1,5 @@
+import io
+import zipfile
 from datetime import UTC, datetime, timedelta
 
 import app.api.v1.endpoints.account as account_endpoint
@@ -115,6 +117,53 @@ def test_overview_metrics_aggregate_only_current_user_data(client):
         "color_coverage_percent": 50,
         "photo_coverage_percent": 33,
     }
+
+
+def test_export_data_returns_zip_for_current_user(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+    created_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={"first_name": "Export", "last_name": "Ready", "client_type": "Color"},
+    )
+    client_id = created_client.json()["id"]
+
+    client.patch(
+        f"/api/v1/clients/{client_id}/color-chart",
+        headers=_auth("token-user-1"),
+        json={"porosity": "Medium"},
+    )
+    client.post(
+        f"/api/v1/clients/{client_id}/formulas",
+        headers=_auth("token-user-1"),
+        json={
+            "service_type": "Color",
+            "price_cents": 12000,
+            "service_at": datetime.now(UTC).isoformat(),
+        },
+    )
+
+    exported = client.get("/api/v1/exports/data", headers=_auth("token-user-1"))
+
+    assert exported.status_code == 200
+    assert exported.headers["content-type"] == "application/zip"
+    assert "attachment; filename=myguest_export_" in exported.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(io.BytesIO(exported.content))
+    assert sorted(archive.namelist()) == [
+        "appointment_logs.csv",
+        "clients.csv",
+        "color_charts.csv",
+        "services.csv",
+    ]
+
+    clients_csv = archive.read("clients.csv").decode("utf-8")
+    formulas_csv = archive.read("appointment_logs.csv").decode("utf-8")
+    charts_csv = archive.read("color_charts.csv").decode("utf-8")
+
+    assert "Export" in clients_csv
+    assert "Color" in formulas_csv
+    assert "Medium" in charts_csv
 
 
 def test_account_delete_reports_cleanup_outcome_and_removes_user(client, monkeypatch):

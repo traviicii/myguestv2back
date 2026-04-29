@@ -9,7 +9,15 @@ from sqlalchemy.pool import StaticPool
 from app.api.deps import get_token_verifier
 from app.core.config import Settings
 from app.db.base import Base
-from app.db.import_models import Client, ColorChart, Formula, FormulaImage, FormulaService, Service, User  # noqa: F401
+from app.db.import_models import (  # noqa: F401
+    Client,
+    ColorChart,
+    Formula,
+    FormulaImage,
+    FormulaService,
+    Service,
+    User,
+)
 from app.main import create_app
 
 
@@ -67,6 +75,9 @@ class FakeVerifier:
                 "This auth session has been revoked. Please sign in again.",
             )
         return claims
+
+    def check_ready(self) -> None:
+        return None
 
 
 @pytest.fixture()

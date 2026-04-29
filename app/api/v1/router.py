@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     auth,
     clients,
     color_charts,
+    exports,
     formulas,
     health,
     metrics,
@@ -18,5 +19,6 @@ api_router.include_router(account.router)
 api_router.include_router(clients.router)
 api_router.include_router(color_charts.router)
 api_router.include_router(formulas.router)
+api_router.include_router(exports.router)
 api_router.include_router(metrics.router)
 api_router.include_router(services.router)

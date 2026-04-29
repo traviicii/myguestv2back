@@ -26,8 +26,18 @@ class FirebaseTokenVerifier:
                 firebase_admin.initialize_app(options=options)
         self._initialized = True
 
+    def check_ready(self) -> None:
+        try:
+            self._initialize()
+        except Exception as exc:
+            raise AppError(
+                503,
+                "auth_provider_unavailable",
+                "Firebase auth backend is not ready.",
+            ) from exc
+
     def verify(self, token: str) -> dict[str, Any]:
-        self._initialize()
+        self.check_ready()
         try:
             return auth.verify_id_token(token, check_revoked=True)
         except auth.RevokedIdTokenError as exc:

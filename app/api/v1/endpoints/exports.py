@@ -1,7 +1,7 @@
 import csv
 import io
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -35,7 +35,9 @@ def export_data(
     )
     services = list(
         db.scalars(
-            select(Service).where(Service.owner_user_id == current_user.id).order_by(Service.sort_order.asc())
+            select(Service)
+            .where(Service.owner_user_id == current_user.id)
+            .order_by(Service.sort_order.asc())
         ).all()
     )
     formulas = list(
@@ -197,7 +199,7 @@ def export_data(
         )
 
     zip_buffer.seek(0)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     filename = f"myguest_export_{timestamp}.zip"
 
     return StreamingResponse(
