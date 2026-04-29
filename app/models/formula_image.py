@@ -9,7 +9,10 @@ class FormulaImage(Base, TimestampMixin):
     __tablename__ = "formula_images"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    formula_id: Mapped[int] = mapped_column(ForeignKey("formulas.id", ondelete="CASCADE"), index=True)
+    formula_id: Mapped[int] = mapped_column(
+        ForeignKey("formulas.id", ondelete="CASCADE"),
+        index=True,
+    )
 
     storage_provider: Mapped[str] = mapped_column(String(16), default="firebase")
     public_url: Mapped[str | None] = mapped_column(Text, nullable=True)

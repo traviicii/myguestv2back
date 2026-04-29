@@ -37,6 +37,12 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+ignore = [
+  # FastAPI's documented dependency-injection style uses Depends(...) in
+  # function defaults. Ruff's B008 rule is useful elsewhere, but too noisy for
+  # this API layer.
+  "B008",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

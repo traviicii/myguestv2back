@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.api.v1.endpoints.formulas import _resolve_image_public_url
 from app.models import FormulaImage
@@ -145,7 +145,7 @@ def test_formula_multi_service_create_and_update(client):
             "service_ids": [second_service["id"], first_service["id"]],
             "notes": "multi service",
             "price_cents": 25000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert created_formula.status_code == 201
@@ -197,7 +197,7 @@ def test_legacy_service_type_backfills_links_without_duplicates(client):
             "service_type": " single process ",
             "notes": "legacy 1",
             "price_cents": 10000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert first_formula.status_code == 201
@@ -212,7 +212,7 @@ def test_legacy_service_type_backfills_links_without_duplicates(client):
             "service_type": "single PROCESS",
             "notes": "legacy 2",
             "price_cents": 9000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert second_formula.status_code == 201
@@ -246,7 +246,7 @@ def test_formula_image_write_and_replace_flow(client):
         headers=_auth("token-user-1"),
         json={
             "service_ids": [service["id"]],
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
             "images": [
                 {
                     "storage_provider": "firebase",

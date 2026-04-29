@@ -13,7 +13,10 @@ class FormulaService(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    formula_id: Mapped[int] = mapped_column(ForeignKey("formulas.id", ondelete="CASCADE"), index=True)
+    formula_id: Mapped[int] = mapped_column(
+        ForeignKey("formulas.id", ondelete="CASCADE"),
+        index=True,
+    )
     service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), index=True)
     service_label_snapshot: Mapped[str] = mapped_column(String(96))
     position: Mapped[int] = mapped_column(Integer, default=0)

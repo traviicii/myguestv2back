@@ -18,7 +18,10 @@ class StorageCleanupSummary:
     failed: int
 
 
-def extract_storage_target(public_url: str | None, object_key: str | None) -> tuple[str | None, str | None]:
+def extract_storage_target(
+    public_url: str | None,
+    object_key: str | None,
+) -> tuple[str | None, str | None]:
     if object_key:
         return None, object_key.lstrip("/")
     if not public_url:

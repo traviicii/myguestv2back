@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.models import ColorChart, User
 
@@ -137,7 +137,7 @@ def test_formula_crud_flow_scoped_to_owner(client):
             "service_type": "color",
             "notes": "test",
             "price_cents": 12000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert created_formula.status_code == 201
@@ -182,7 +182,7 @@ def test_list_formulas_returns_only_owner_rows(client):
             "service_type": "cut",
             "notes": "owner formula",
             "price_cents": 9000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert owner_formula.status_code == 201
@@ -194,7 +194,7 @@ def test_list_formulas_returns_only_owner_rows(client):
             "service_type": "color",
             "notes": "other formula",
             "price_cents": 15000,
-            "service_at": datetime.now(timezone.utc).isoformat(),
+            "service_at": datetime.now(UTC).isoformat(),
         },
     )
     assert other_formula.status_code == 201
