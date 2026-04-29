@@ -1,0 +1,48 @@
+name: Render Smoke Contract
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Optional override for the deployed API base URL"
+        required: false
+        type: string
+
+concurrency:
+  group: render-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke-remote:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve smoke inputs
+        id: smoke-inputs
+        env:
+          BASE_URL_INPUT: ${{ inputs.base_url }}
+          BASE_URL_SECRET: ${{ secrets.RENDER_SMOKE_BASE_URL }}
+          TOKEN: ${{ secrets.RENDER_SMOKE_TOKEN }}
+        run: |
+          BASE_URL="${BASE_URL_INPUT:-$BASE_URL_SECRET}"
+
+          if [[ -z "${BASE_URL}" ]]; then
+            echo "::error::Missing deployed API base URL. Set the base_url workflow input or the RENDER_SMOKE_BASE_URL secret."
+            exit 1
+          fi
+
+          if [[ -z "${TOKEN}" ]]; then
+            echo "::error::Missing RENDER_SMOKE_TOKEN secret."
+            exit 1
+          fi
+
+          echo "base_url=${BASE_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Run smoke contract against Render
+        env:
+          BASE_URL: ${{ steps.smoke-inputs.outputs.base_url }}
+          TOKEN: ${{ secrets.RENDER_SMOKE_TOKEN }}
+        run: make smoke-remote BASE_URL="$BASE_URL" TOKEN="$TOKEN"

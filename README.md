@@ -35,6 +35,29 @@ make smoke-remote BASE_URL=https://api.example.com/api/v1 TOKEN=$EXPO_PUBLIC_DEV
 That wraps `scripts/smoke_render_contract.sh` so the backend has one consistent
 remote smoke step before preview/TestFlight frontend builds.
 
+## GitHub Actions
+
+- `Backend CI` runs `make lint` and `make test` on pushes to `main` and on pull
+  requests.
+- `Render Smoke Contract` is the manual release gate for the deployed Render
+  API. Run it after Render reports the backend healthy and before shipping a new
+  mobile build.
+
+Set these repository secrets before using the smoke workflow:
+
+- `RENDER_SMOKE_BASE_URL`
+  Example: `https://myguestv2back.onrender.com/api/v1`
+- `RENDER_SMOKE_TOKEN`
+  A valid Firebase ID token for a real account that is safe to use for smoke
+  verification
+
+Recommended release flow:
+
+1. Deploy the backend to Render.
+2. Wait for `/api/v1/health` to report healthy.
+3. Run `Render Smoke Contract` in GitHub Actions.
+4. Ship the matching frontend build only after the smoke job passes.
+
 ## Current Auth And Storage Path
 
 - Auth: Firebase ID token verification only

@@ -9,6 +9,7 @@ This is the backend gate for shipping the iOS app with confidence.
 - [x] Data export endpoint exists for authenticated users.
 - [x] Health endpoint performs real readiness checks for database and auth backend.
 - [ ] Remote smoke test is run against the deployed Render API before each release.
+  Workflow: `.github/workflows/render-smoke.yml`
 - [ ] Production env is confirmed with `TRUSTED_HOSTS`, `CORS_ORIGINS`, Firebase credentials, and storage bucket.
 
 ## Operational readiness
@@ -38,7 +39,7 @@ This is the backend gate for shipping the iOS app with confidence.
 
 ## Recommended next steps
 
-1. Add a production smoke job in CI or a release checklist script.
-2. Add alerting for repeated 5xx responses and failed auth-provider readiness checks.
-3. Add durable shared rate limiting if the API will scale beyond a single app instance.
-4. Add explicit Sentry or equivalent exception monitoring on the deployed backend.
+1. Add alerting for repeated 5xx responses and failed auth-provider readiness checks.
+2. Add durable shared rate limiting if the API will scale beyond a single app instance.
+3. Add explicit Sentry or equivalent exception monitoring on the deployed backend.
+4. Record the last successful restore drill and smoke-gate run before App Store submission.
