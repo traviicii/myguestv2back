@@ -96,6 +96,49 @@ def test_client_ownership_enforced(client):
     assert forbidden_read.status_code == 404
 
 
+def test_client_groups_can_be_created_assigned_and_archived(client):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    created_group = client.post(
+        "/api/v1/client-groups",
+        headers=_auth("token-user-1"),
+        json={"name": "Extensions"},
+    )
+    assert created_group.status_code == 201
+    group = created_group.json()
+
+    created_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={
+            "first_name": "Riley",
+            "last_name": "Rows",
+            "group_ids": [group["id"]],
+        },
+    )
+    assert created_client.status_code == 201
+    assert created_client.json()["groups"][0]["name"] == "Extensions"
+
+    listed = client.get("/api/v1/client-groups", headers=_auth("token-user-1"))
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["client_count"] == 1
+
+    archived = client.delete(
+        f"/api/v1/client-groups/{group['id']}",
+        headers=_auth("token-user-1"),
+    )
+    assert archived.status_code == 204
+
+    active = client.get("/api/v1/client-groups", headers=_auth("token-user-1"))
+    assert active.json()["items"] == []
+
+    all_groups = client.get(
+        "/api/v1/client-groups?active=all",
+        headers=_auth("token-user-1"),
+    )
+    assert all_groups.json()["items"][0]["archived_at"] is not None
+
+
 def test_clients_pagination_with_query_params(client):
     client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
 

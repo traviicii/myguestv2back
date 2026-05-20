@@ -25,6 +25,18 @@ class Client(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     owner = relationship("User", back_populates="clients")
+    group_memberships = relationship(
+        "ClientGroupMembership",
+        back_populates="client",
+        cascade="all, delete-orphan",
+    )
+    groups = relationship(
+        "ClientGroup",
+        secondary="client_group_memberships",
+        back_populates="clients",
+        order_by="ClientGroup.sort_order",
+        viewonly=True,
+    )
     color_chart = relationship(
         "ColorChart", back_populates="client", uselist=False, cascade="all, delete-orphan"
     )

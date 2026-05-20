@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     account,
     auth,
+    client_groups,
     clients,
     color_charts,
     exports,
@@ -17,6 +18,7 @@ api_router.include_router(health.router)
 api_router.include_router(auth.router)
 api_router.include_router(account.router)
 api_router.include_router(clients.router)
+api_router.include_router(client_groups.router)
 api_router.include_router(color_charts.router)
 api_router.include_router(formulas.router)
 api_router.include_router(exports.router)

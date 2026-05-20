@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.client_group import ClientGroupRead
 from app.schemas.common import ORMModel
 
 
@@ -12,6 +13,7 @@ class ClientCreate(BaseModel):
     phone: str | None = None
     birthday: date | None = None
     client_type: str | None = None
+    group_ids: list[int] | None = None
     notes: str | None = None
 
 
@@ -22,6 +24,7 @@ class ClientUpdate(BaseModel):
     phone: str | None = None
     birthday: date | None = None
     client_type: str | None = None
+    group_ids: list[int] | None = None
     notes: str | None = None
 
 
@@ -36,6 +39,7 @@ class ClientRead(ORMModel):
     phone: str | None = None
     birthday: date | None = None
     client_type: str | None = None
+    groups: list[ClientGroupRead] = Field(default_factory=list)
     notes: str | None = None
 
 

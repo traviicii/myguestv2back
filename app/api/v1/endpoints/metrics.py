@@ -6,7 +6,16 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_session
 from app.core.errors import AppError
-from app.models import Client, ColorChart, Formula, FormulaImage, FormulaService, User
+from app.models import (
+    Client,
+    ClientGroup,
+    ClientGroupMembership,
+    ColorChart,
+    Formula,
+    FormulaImage,
+    FormulaService,
+    User,
+)
 from app.schemas.metrics import OverviewMetrics
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
@@ -141,9 +150,15 @@ def overview_metrics(
 
     eligible_client_ids = list(
         db.scalars(
-            select(Client.id).where(
+            select(func.distinct(Client.id))
+            .outerjoin(ClientGroupMembership, ClientGroupMembership.client_id == Client.id)
+            .outerjoin(ClientGroup, ClientGroup.id == ClientGroupMembership.group_id)
+            .where(
                 Client.owner_user_id == current_user.id,
-                Client.client_type.in_(["Color", "Cut & Color"]),
+                (
+                    Client.client_type.in_(["Color", "Cut & Color"])
+                    | (ClientGroup.normalized_name == "color")
+                ),
             )
         ).all()
     )

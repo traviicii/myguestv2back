@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_session
-from app.models import Client, ColorChart, Formula, Service, User
+from app.models import Client, ClientGroup, ColorChart, Formula, Service, User
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 
@@ -30,7 +30,17 @@ def export_data(
 ) -> StreamingResponse:
     clients = list(
         db.scalars(
-            select(Client).where(Client.owner_user_id == current_user.id).order_by(Client.id.asc())
+            select(Client)
+            .where(Client.owner_user_id == current_user.id)
+            .options(selectinload(Client.groups))
+            .order_by(Client.id.asc())
+        ).all()
+    )
+    client_groups = list(
+        db.scalars(
+            select(ClientGroup)
+            .where(ClientGroup.owner_user_id == current_user.id)
+            .order_by(ClientGroup.sort_order.asc(), ClientGroup.name.asc())
         ).all()
     )
     services = list(
@@ -66,6 +76,7 @@ def export_data(
             client.phone,
             client.birthday.isoformat() if client.birthday else None,
             client.client_type,
+            "; ".join(group.name for group in client.groups),
             client.notes,
             client.created_at.isoformat() if client.created_at else None,
             client.updated_at.isoformat() if client.updated_at else None,
@@ -84,6 +95,19 @@ def export_data(
             service.updated_at.isoformat() if service.updated_at else None,
         ]
         for service in services
+    ]
+
+    client_group_rows = [
+        [
+            group.id,
+            group.name,
+            group.normalized_name,
+            group.sort_order,
+            group.archived_at.isoformat() if group.archived_at else None,
+            group.created_at.isoformat() if group.created_at else None,
+            group.updated_at.isoformat() if group.updated_at else None,
+        ]
+        for group in client_groups
     ]
 
     formula_rows = [
@@ -135,11 +159,27 @@ def export_data(
                     "phone",
                     "birthday",
                     "client_type",
+                    "client_groups",
                     "notes",
                     "created_at",
                     "updated_at",
                 ],
                 client_rows,
+            ),
+        )
+        zip_file.writestr(
+            "client_groups.csv",
+            _write_csv(
+                [
+                    "id",
+                    "name",
+                    "normalized_name",
+                    "sort_order",
+                    "archived_at",
+                    "created_at",
+                    "updated_at",
+                ],
+                client_group_rows,
             ),
         )
         zip_file.writestr(

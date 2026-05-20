@@ -152,16 +152,19 @@ def test_export_data_returns_zip_for_current_user(client):
     archive = zipfile.ZipFile(io.BytesIO(exported.content))
     assert sorted(archive.namelist()) == [
         "appointment_logs.csv",
+        "client_groups.csv",
         "clients.csv",
         "color_charts.csv",
         "services.csv",
     ]
 
     clients_csv = archive.read("clients.csv").decode("utf-8")
+    client_groups_csv = archive.read("client_groups.csv").decode("utf-8")
     formulas_csv = archive.read("appointment_logs.csv").decode("utf-8")
     charts_csv = archive.read("color_charts.csv").decode("utf-8")
 
     assert "Export" in clients_csv
+    assert "Color" in client_groups_csv
     assert "Color" in formulas_csv
     assert "Medium" in charts_csv
 
