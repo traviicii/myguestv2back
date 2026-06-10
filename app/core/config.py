@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_FIREBASE_STORAGE_BUCKET = "client-keeper-a2e91.appspot.com"
+
 
 def _parse_str_list(value: str | list[str] | tuple[str, ...]) -> list[str]:
     if isinstance(value, (list, tuple)):
@@ -42,7 +44,7 @@ class Settings(BaseSettings):
     trusted_hosts: list[str] = Field(default_factory=list)
     api_docs_enabled: bool | None = None
     firebase_credentials_path: str | None = None
-    firebase_storage_bucket: str | None = None
+    firebase_storage_bucket: str | None = DEFAULT_FIREBASE_STORAGE_BUCKET
     db_pool_size: int = 5
     db_max_overflow: int = 2
     db_pool_timeout_seconds: int = 30

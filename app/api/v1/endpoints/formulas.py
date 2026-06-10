@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 from datetime import timedelta
 from typing import Literal
@@ -21,8 +22,13 @@ from app.schemas.formula import (
     FormulaRead,
     FormulaUpdate,
 )
+from app.services.storage_cleanup import delete_firebase_images
 
 router = APIRouter(tags=["formulas"])
+logger = logging.getLogger(__name__)
+
+LOCAL_IMAGE_SCHEMES = {"file", "content", "ph", "assets-library"}
+DISALLOWED_IMAGE_PROVIDERS = {"device_local", "device-local", "local", "file"}
 
 
 def _formula_load_options():
@@ -234,6 +240,94 @@ def _normalize_storage_provider(value: str | None) -> str:
     return trimmed[:16]
 
 
+def _trim_optional(value: str | None) -> str | None:
+    trimmed = value.strip() if value else None
+    return trimmed or None
+
+
+def _validate_image_payload(payload: FormulaImageWrite) -> None:
+    provider = _normalize_storage_provider(payload.storage_provider)
+    public_url = _trim_optional(payload.public_url)
+    scheme = urlparse(public_url).scheme.lower() if public_url else ""
+    if provider in DISALLOWED_IMAGE_PROVIDERS or scheme in LOCAL_IMAGE_SCHEMES:
+        raise AppError(
+            422,
+            "invalid_image_reference",
+            "Appointment images must be uploaded before they are attached.",
+        )
+
+
+def _storage_cleanup_key(
+    public_url: str | None,
+    object_key: str | None,
+    default_bucket_name: str | None,
+) -> tuple[str | None, str] | None:
+    bucket_name, object_path = _extract_storage_target(public_url, object_key)
+    if not object_path:
+        return None
+    return (bucket_name or default_bucket_name, object_path)
+
+
+def _formula_image_cleanup_key(
+    image: FormulaImage,
+    default_bucket_name: str | None,
+) -> tuple[str | None, str] | None:
+    provider = _normalize_storage_provider(image.storage_provider)
+    if provider != "firebase":
+        return None
+    return _storage_cleanup_key(image.public_url, image.object_key, default_bucket_name)
+
+
+def _copy_formula_image_for_cleanup(image: FormulaImage) -> FormulaImage:
+    return FormulaImage(
+        id=image.id,
+        formula_id=image.formula_id,
+        storage_provider=image.storage_provider,
+        public_url=image.public_url,
+        object_key=image.object_key,
+        file_name=image.file_name,
+    )
+
+
+def _removed_firebase_images_for_cleanup(
+    existing_images: Sequence[FormulaImage],
+    image_payloads: Sequence[FormulaImageWrite],
+    default_bucket_name: str | None,
+) -> list[FormulaImage]:
+    incoming_keys: set[tuple[str | None, str]] = set()
+    for payload in image_payloads:
+        _validate_image_payload(payload)
+        provider = _normalize_storage_provider(payload.storage_provider)
+        if provider != "firebase":
+            continue
+        cleanup_key = _storage_cleanup_key(
+            _trim_optional(payload.public_url),
+            _trim_optional(payload.object_key),
+            default_bucket_name,
+        )
+        if cleanup_key:
+            incoming_keys.add(cleanup_key)
+
+    removed_images: list[FormulaImage] = []
+    for image in existing_images:
+        cleanup_key = _formula_image_cleanup_key(image, default_bucket_name)
+        if cleanup_key and cleanup_key not in incoming_keys:
+            removed_images.append(_copy_formula_image_for_cleanup(image))
+    return removed_images
+
+
+def _cleanup_removed_formula_images(images: Sequence[FormulaImage]) -> None:
+    if not images:
+        return
+
+    summary = delete_firebase_images(images, get_settings().firebase_storage_bucket)
+    if summary.failed:
+        logger.warning(
+            "Formula image cleanup completed with failures",
+            extra={"deleted": summary.deleted, "failed": summary.failed},
+        )
+
+
 def _resolve_image_public_url(image: FormulaImage) -> str | None:
     provider = (image.storage_provider or "").strip().lower()
     trimmed_public_url = image.public_url.strip() if image.public_url else None
@@ -267,26 +361,33 @@ def _resolve_image_public_url(image: FormulaImage) -> str | None:
         return f"https://firebasestorage.googleapis.com/v0/b/{resolved_bucket}/o/{encoded_key}?alt=media"
 
 
-def _replace_formula_images(formula: Formula, image_payloads: Sequence[FormulaImageWrite]) -> None:
-    if formula.id is not None and formula.images:
-        formula.images.clear()
-    else:
-        formula.images.clear()
+def _replace_formula_images(
+    formula: Formula, image_payloads: Sequence[FormulaImageWrite]
+) -> list[FormulaImage]:
+    default_bucket_name = (get_settings().firebase_storage_bucket or "").strip() or None
+    removed_images = _removed_firebase_images_for_cleanup(
+        list(formula.images or []),
+        image_payloads,
+        default_bucket_name,
+    )
+
+    formula.images.clear()
 
     seen: set[tuple[str, str | None, str | None]] = set()
     for index, payload in enumerate(image_payloads):
-        public_url = payload.public_url.strip() if payload.public_url else None
-        object_key = payload.object_key.strip() if payload.object_key else None
-        file_name = payload.file_name.strip() if payload.file_name else None
+        provider = _normalize_storage_provider(payload.storage_provider)
+        public_url = _trim_optional(payload.public_url)
+        object_key = _trim_optional(payload.object_key)
+        file_name = _trim_optional(payload.file_name)
         if not public_url and not object_key:
             continue
-        dedupe_key = (payload.storage_provider or "", public_url, object_key)
+        dedupe_key = (provider, public_url, object_key)
         if dedupe_key in seen:
             continue
         seen.add(dedupe_key)
         formula.images.append(
             FormulaImage(
-                storage_provider=_normalize_storage_provider(payload.storage_provider),
+                storage_provider=provider,
                 public_url=public_url,
                 object_key=object_key,
                 file_name=file_name
@@ -294,6 +395,8 @@ def _replace_formula_images(formula: Formula, image_payloads: Sequence[FormulaIm
                 or f"image-{index + 1}.jpg",
             )
         )
+
+    return removed_images
 
 
 def _dedupe_ids_preserve_order(ids: Sequence[int]) -> list[int]:
@@ -521,6 +624,7 @@ def update_formula(
 ) -> FormulaRead:
     formula = _get_owned_formula(db, current_user.id, formula_id)
     payload_values = payload.model_dump(exclude_unset=True)
+    removed_images: list[FormulaImage] = []
 
     if "notes" in payload_values:
         formula.notes = payload_values["notes"]
@@ -539,9 +643,10 @@ def update_formula(
             db, formula, owner_user_id, payload_values.get("service_type")
         )
     if "images" in payload_values:
-        _replace_formula_images(formula, payload.images or [])
+        removed_images = _replace_formula_images(formula, payload.images or [])
 
     db.commit()
+    _cleanup_removed_formula_images(removed_images)
     formula = _get_owned_formula(db, current_user.id, formula.id)
     return _serialize_formula_read(formula)
 
@@ -553,6 +658,13 @@ def delete_formula(
     db: Session = Depends(get_session),
 ) -> Response:
     formula = _get_owned_formula(db, current_user.id, formula_id)
+    default_bucket_name = (get_settings().firebase_storage_bucket or "").strip() or None
+    removed_images = _removed_firebase_images_for_cleanup(
+        list(formula.images or []),
+        [],
+        default_bucket_name,
+    )
     db.delete(formula)
     db.commit()
+    _cleanup_removed_formula_images(removed_images)
     return Response(status_code=204)

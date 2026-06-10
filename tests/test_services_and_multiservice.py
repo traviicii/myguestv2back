@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 
+from app.api.v1.endpoints import formulas as formulas_endpoint
 from app.api.v1.endpoints.formulas import _resolve_image_public_url
 from app.models import FormulaImage
+from app.services.storage_cleanup import StorageCleanupSummary
 
 
 def _auth(token: str) -> dict[str, str]:
@@ -224,7 +226,7 @@ def test_legacy_service_type_backfills_links_without_duplicates(client):
     assert listed_services.json()["items"][0]["name"] == "Single Process"
 
 
-def test_formula_image_write_and_replace_flow(client):
+def test_formula_image_write_and_replace_flow(client, monkeypatch):
     client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
 
     created_client = client.post(
@@ -250,7 +252,7 @@ def test_formula_image_write_and_replace_flow(client):
             "images": [
                 {
                     "storage_provider": "firebase",
-                    "public_url": "https://cdn.example.com/gallery/final-look.jpg",
+                    "object_key": "appointment-images/client-1/final-look.jpg",
                 },
                 {
                     "storage_provider": "r2",
@@ -266,7 +268,16 @@ def test_formula_image_write_and_replace_flow(client):
     assert created_body["images"][1]["file_name"] == "process-shot.png"
 
     formula_id = created_body["id"]
-    patched = client.patch(
+
+    cleanup_calls: list[list[tuple[str | None, str | None]]] = []
+
+    def fake_delete_images(images, default_bucket_name):
+        cleanup_calls.append([(image.object_key, image.public_url) for image in images])
+        return StorageCleanupSummary(deleted=len(images), failed=0)
+
+    monkeypatch.setattr(formulas_endpoint, "delete_firebase_images", fake_delete_images)
+
+    invalid = client.patch(
         f"/api/v1/formulas/{formula_id}",
         headers=_auth("token-user-1"),
         json={
@@ -279,11 +290,29 @@ def test_formula_image_write_and_replace_flow(client):
             ]
         },
     )
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "invalid_image_reference"
+    assert cleanup_calls == []
+
+    patched = client.patch(
+        f"/api/v1/formulas/{formula_id}",
+        headers=_auth("token-user-1"),
+        json={
+            "images": [
+                {
+                    "storage_provider": "firebase",
+                    "object_key": "appointment-images/client-1/new-photo.jpeg",
+                    "file_name": "new-photo.jpeg",
+                }
+            ]
+        },
+    )
     assert patched.status_code == 200
     patched_body = patched.json()
     assert len(patched_body["images"]) == 1
-    assert patched_body["images"][0]["storage_provider"] == "device_local"
+    assert patched_body["images"][0]["storage_provider"] == "firebase"
     assert patched_body["images"][0]["file_name"] == "new-photo.jpeg"
+    assert cleanup_calls == [[("appointment-images/client-1/final-look.jpg", None)]]
 
     cleared = client.patch(
         f"/api/v1/formulas/{formula_id}",
@@ -292,6 +321,53 @@ def test_formula_image_write_and_replace_flow(client):
     )
     assert cleared.status_code == 200
     assert cleared.json()["images"] == []
+    assert cleanup_calls == [
+        [("appointment-images/client-1/final-look.jpg", None)],
+        [("appointment-images/client-1/new-photo.jpeg", None)],
+    ]
+
+
+def test_delete_formula_cleans_up_firebase_images(client, monkeypatch):
+    client.post("/api/v1/auth/sync", headers=_auth("token-user-1"))
+
+    created_client = client.post(
+        "/api/v1/clients",
+        headers=_auth("token-user-1"),
+        json={"first_name": "Delete", "last_name": "Image"},
+    )
+    client_id = created_client.json()["id"]
+
+    created_formula = client.post(
+        f"/api/v1/clients/{client_id}/formulas",
+        headers=_auth("token-user-1"),
+        json={
+            "service_type": "Color",
+            "service_at": datetime.now(UTC).isoformat(),
+            "images": [
+                {
+                    "storage_provider": "firebase",
+                    "object_key": "appointment-images/client-1/delete-me.jpg",
+                }
+            ],
+        },
+    )
+    assert created_formula.status_code == 201
+
+    cleanup_calls: list[list[str | None]] = []
+
+    def fake_delete_images(images, default_bucket_name):
+        cleanup_calls.append([image.object_key for image in images])
+        return StorageCleanupSummary(deleted=len(images), failed=0)
+
+    monkeypatch.setattr(formulas_endpoint, "delete_firebase_images", fake_delete_images)
+
+    deleted = client.delete(
+        f"/api/v1/formulas/{created_formula.json()['id']}",
+        headers=_auth("token-user-1"),
+    )
+
+    assert deleted.status_code == 204
+    assert cleanup_calls == [["appointment-images/client-1/delete-me.jpg"]]
 
 
 def test_resolve_image_public_url_uses_firebase_bucket_for_object_keys(monkeypatch):
